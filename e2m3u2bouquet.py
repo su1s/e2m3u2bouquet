@@ -14,6 +14,8 @@
 #      -  all paramters arg based so in theory works for other providers and can be croned
 #      -  auto reloads bouquets (Doug MacKay) 
 #      -  debug \ testrun modes  
+# v0.3.1 - Restructure (again) of code base to bring in some of dougs better structures
+#        - Doug to add his changes here 
         
 '''
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser  
