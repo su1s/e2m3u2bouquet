@@ -15,7 +15,10 @@
 #      -  auto reloads bouquets (Doug MacKay) 
 #      -  debug \ testrun modes  
 # v0.3.1 - Restructure (again) of code base to bring in some of dougs better structures
-#        - Doug to add his changes here ..
+#        - m3u file parsing updated ..
+#        - bouquet sort order now based on m3u file
+#        - create single channels and sources list for EPG-Importer. Only one source now needs to be enabled in the EPG-Importer plugin
+
         
 '''
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser  
@@ -45,6 +48,7 @@ TESTRUN = 1
 
 ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
+PROVIDER = "FabIPTV"
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -122,36 +126,38 @@ class IPTVSetup:
         #2 tvg-id
         #3 stream url    
         #4 stream type
-        #5 channel ID 
+        #5 service Ref 
         print("\n----Parsing m3u file----")
         listchannels=[]
+		
         with open (filename, "r") as myfile:
             for line in myfile:
                 if 'EXTM3U' in line: # First line we are not interested 
                     continue    
                 elif 'EXTINF:' in line: # Info line - work out group and output the line
-                    channels = [line.split('"')[7],(line.split('"')[8])[1:].strip(),line.split('"')[1]]
+                    channel = [line.split('"')[7],(line.split('"')[8])[1:].strip(),line.split('"')[1]]
                 elif 'http:' in line:  
-                    channels.append(line.strip())
-                    listchannels.append(channels)
+                    channel.append(line.strip())
+                    channeldict = {'category':channel[0],'title':channel[1],'tvgId':channel[2],'streamUrl':channel[3]}
+                    listchannels.append(channeldict)
+					
         # Clean up VOD and create stream types  
         for x in listchannels:
-            if x[3].endswith(('.mp4','mkv','.avi',"mpg")):
+            if x['streamUrl'].endswith(('.mp4','mkv','.avi',"mpg")):
                 if multivod:
-                    x[0] = "VOD - "+x[0]
+                    x['category'] = "VOD - "+x['category']
                 else:
-                    x[0] = "VOD"
-                x.append("4097")
+                    x['category'] = "VOD"
+                x['streamType'] = "4097"                
             elif all_iptv_stream_types:
-                x.append("4097")
+                x['streamType'] = "4097"
             else: 
-                x.append("1")
-        # Sort the list 
-        listchannels.sort()
+                x['streamType'] = "1"
+                
         # Add Service references 
         num =1 
         for x in listchannels:
-            x.append(x[4]+":0:1:"+str(num)+":0:0:0:0:0:0")
+            x['serviceRef'] = x['streamType']+":0:1:"+str(num)+":0:0:0:0:0:0"            
             num += 1
         # Have a look at what we have      
         if DEBUG and TESTRUN:
@@ -162,29 +168,24 @@ class IPTVSetup:
         print("Completed parsing data...")
         return listchannels
     
-    def create_bouquets(self, listchannels):
-        print("\n----Creating bouquets----")
-        for x in listchannels:
-            # Create file if does exits 
-            if not os.path.isfile(ENIGMAPATH + "userbouquet.suls_iptv_"+x[0].replace(" ","_").replace("/","_")+".tv"):
-                #create file 
-                if DEBUG:
-                    print("Creating: "+ENIGMAPATH + "userbouquet.suls_iptv_"+x[0].replace(" ","_").replace("/","_")+".tv")
-                bouquetfile = open(ENIGMAPATH + "userbouquet.suls_iptv_"+x[0].replace(" ","_").replace("/","_")+".tv","w+")
-                bouquetfile.write("#NAME IPTV - "+x[0].replace("/"," ")+"\n")
-                bouquetfile.write("#SERVICE "+x[5]+":"+x[3].replace(":","%3a")+":"+x[2]+"\n")
-                bouquetfile.write("#DESCRIPTION "+x[1]+"\n")
-                bouquetfile.close()
-                # Add to main bouquets files 
-                tvfile = open(ENIGMAPATH + "bouquets.tv","a")
-                tvfile.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_"+x[0].replace(" ","_").replace("/","_")+".tv\" ORDER BY bouquet\n")
-                tvfile.close()
-            else: 
-                #Append to file 
-                bouquetfile = open(ENIGMAPATH + "userbouquet.suls_iptv_"+x[0].replace(" ","_").replace("/","_")+".tv","a")
-                bouquetfile.write("#SERVICE "+x[5]+":"+x[3].replace(":","%3a")+":"+x[2]+"\n")
-                bouquetfile.write("#DESCRIPTION "+x[1]+"\n")
-                bouquetfile.close()
+    def create_bouquets(self, listcategories, listchannels):
+        print("\n----Creating bouquets----")        
+        for cat in listcategories:
+            #create file
+            if DEBUG:
+                print("Creating: "+ENIGMAPATH + "userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv")
+            bouquetfile = open(ENIGMAPATH + "userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv","w+")			
+            bouquetfile.write("#NAME IPTV - "+cat+"\n")
+            for x in listchannels:
+                if x['category'] == cat:
+                    bouquetfile.write("#SERVICE "+x['serviceRef']+":"+x['streamUrl'].replace(":","%3a")+":"+x['title']+"\n")
+                    bouquetfile.write("#DESCRIPTION "+x['title']+"\n")
+            bouquetfile.close()
+
+            # Add to main bouquets.tv file
+            tvfile = open(ENIGMAPATH + "bouquets.tv","a")
+            tvfile.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv\" ORDER BY bouquet\n")
+            tvfile.close()        
         print("bouquets created ...")      
     
     def reloadBouquets(self):        
@@ -193,32 +194,29 @@ class IPTVSetup:
             os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=2 > /dev/null 2>&1 &")
             print("bouquets reloaded...")
     
-    def create_custom_channel(self, bouquet, listchannels):
+    def create_epgimporter_config(self, listcategories, listchannels, epgurl):
         if DEBUG:
-            print("creating custom channel - " + bouquet)
-        #create channels file and opening tag
-        channelfile = open(EPGIMPORTPATH + "suls_iptv_"+bouquet.replace(" ","_").replace("/","_")+".channels.xml","w+")
-        channelfile.write("<channels>\n")
-        # loop through list out putting matching stuff 
-        for x in listchannels:
-            if x[0] == bouquet:
-                # now using tvg-id from the mm3u file rather than dodgy cleaning attempts 
-                channelfile.write("<channel id=\""+x[2].replace("&","&amp;")+"\">"+x[5]+":http%3a//example.m3u8</channel> <!-- "+x[1]+" -->\n")
-        # Write closing tag and close file 
-        channelfile.write("</channels>\n")
+            print("creating EPGImporter config")
+        #create channels file        
+        channelfile = open(EPGIMPORTPATH + "suls_iptv_channels.channels.xml","w+")		
+        nonvodcatgories = (cat for cat in listcategories if not cat.startswith('VOD'))
+        for cat in nonvodcatgories:
+            channelfile.write("<!-- "+cat.replace("&","&amp;")+" -->\n")
+            channelfile.write("<channels>\n")
+            for x in listchannels:
+                if x['category'] == cat:					
+                    channelfile.write("<channel id=\""+x['tvgId'].replace("&","&amp;")+"\">"+x['serviceRef']+":http%3a//example.m3u8</channel> <!-- "+x['title'].replace("&","&amp;")+" -->\n")						
+            channelfile.write("</channels>\n")
         channelfile.close()
-    
-    def create_custom_source(self,bouquet,epgurl):
-        if DEBUG:
-            print("creating custom source - " + bouquet)
-        #create custom sources file 
-        sourcefile = open(EPGIMPORTPATH + "suls_iptv_"+bouquet.replace(" ","_").replace("/","_")+".sources.xml","w+")
-        sourcefile.write("<sources><source type=\"gen_xmltv\" channels=\"" + EPGIMPORTPATH +"suls_iptv_"+bouquet.replace(" ","_").replace("/","_")+".channels.xml\">\n")
-        sourcefile.write("<description>IPTV - "+bouquet.replace("/"," ")+"</description>\n")
-        sourcefile.write("<url>" + epgurl[0].replace("&","&amp;") + "</url>\n")
-        sourcefile.write("</source></sources>\n")
-        sourcefile.close()
-    
+        
+        #create custom sources file
+        file = open(EPGIMPORTPATH + "suls_iptv_sources.sources.xml","w+")
+        file.write("<sources><source type=\"gen_xmltv\" channels=\"/etc/epgimport/suls_iptv_channels.channels.xml\">\n")
+        file.write("<description>"+PROVIDER.replace("&","&amp;")+"</description>\n")
+        file.write("<url>"+epgurl.replace("&","&amp;")+"</url>\n")		
+        file.write("</source></sources>\n")
+        file.close()
+
     # crontab not installed in enigma by default / pip also missing - not sure how to get this in at the moment  
     #def create_cron(self):
         #if not TESTRUN:
@@ -264,7 +262,7 @@ USAGE
         # Process arguments
         args = parser.parse_args()
         m3uurl = args.m3uurl[0]
-        epgurl = args.epgurl
+        epgurl = args.epgurl[0]
         iptvtypes = args.iptvtypes
         uninstall = args.uninstall
         multivod = args.multivod
@@ -283,6 +281,7 @@ USAGE
     
     
     ## Core program logic starts here 
+    listcategories = []
     e2m3uSetup = IPTVSetup()
     if uninstall:
         # Clean up any existing files
@@ -298,23 +297,18 @@ USAGE
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
         listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,multivod)
-        # Create bouquet files 
-        e2m3uSetup.create_bouquets(listchannels)
-        # Create list of bouquets 
-        bouquets= []
+        # get category list (keep order from m3u file)
         for x in listchannels:
-            if x[0] not in bouquets:
-                bouquets.append(x[0])
+            if x['category'] not in listcategories:
+                listcategories.append(x['category'])
+        #sort channels by category
+		listchannels = sorted(listchannels, key=lambda x: (x['category']))
+        # Create bouquet files 
+        e2m3uSetup.create_bouquets(listcategories,listchannels)        
         # Now create custom channels for each bouquet
-        print("\n----Creating custom channels----")
-        for bouquet in bouquets:
-            e2m3uSetup.create_custom_channel(bouquet,listchannels)
-        print("custom channels created...")    
-        # Finally create custom sources for each bouquet
-        print("\n----Creating custom sources----")
-        for bouquet in bouquets:
-            e2m3uSetup.create_custom_source(bouquet,epgurl)
-        print("custom sources created...")    
+        print("\n----Creating EPG-Importer config ----")        
+        e2m3uSetup.create_epgimporter_config(listcategories,listchannels,epgurl)
+        print("EPG-Importer config created...")            
         # reload bouquets
         e2m3uSetup.reloadBouquets()
         # Now create a cron job 
@@ -323,10 +317,10 @@ USAGE
         print("Engima2 IPTV bouquets created ! ")
         print("********************************")        
         print("\nTo enable EPG data")
-        print("Please open EPGImport plugin.. ")
-        print("Select sources and enable the new IPTV sources (these start IPTV - )")
+        print("Please open EPG-Importer plugin.. ")
+        print("Select sources and enable the new IPTV sources (will be listed as {})".format(PROVIDER))
         print("Save the selected sources, press yellow button to start manual import")
-        print("You can then set EPGImport to automatically import the EPG every day")
+        print("You can then set EPG-Importer to automatically import the EPG every day")
 
 if __name__ == "__main__":
     #if DEBUG:
