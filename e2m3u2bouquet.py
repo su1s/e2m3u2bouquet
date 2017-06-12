@@ -1,4 +1,4 @@
-#!/usr/bin/python 
+#!/usr/bin/env python 
 # encoding: utf-8
 # Change notes 
 # v0.1 - Initial version (Dave Sully) 
@@ -200,22 +200,22 @@ class IPTVSetup:
         #create channels file        
         channelfile = open(EPGIMPORTPATH + "suls_iptv_channels.channels.xml","w+")		
         nonvodcatgories = (cat for cat in listcategories if not cat.startswith('VOD'))
+        channelfile.write("<channels>\n")
         for cat in nonvodcatgories:
-            channelfile.write("<!-- "+cat.replace("&","&amp;")+" -->\n")
-            channelfile.write("<channels>\n")
+            channelfile.write("<!-- "+cat.replace("&","&amp;")+" -->\n")            
             for x in listchannels:
                 if x['category'] == cat:					
                     channelfile.write("<channel id=\""+x['tvgId'].replace("&","&amp;")+"\">"+x['serviceRef']+":http%3a//example.m3u8</channel> <!-- "+x['title'].replace("&","&amp;")+" -->\n")						
-            channelfile.write("</channels>\n")
+        channelfile.write("</channels>\n")
         channelfile.close()
         
         #create custom sources file
-        file = open(EPGIMPORTPATH + "suls_iptv_sources.sources.xml","w+")
-        file.write("<sources><source type=\"gen_xmltv\" channels=\"/etc/epgimport/suls_iptv_channels.channels.xml\">\n")
-        file.write("<description>"+PROVIDER.replace("&","&amp;")+"</description>\n")
-        file.write("<url>"+epgurl.replace("&","&amp;")+"</url>\n")		
-        file.write("</source></sources>\n")
-        file.close()
+        sourcefile  = open(EPGIMPORTPATH + "suls_iptv_sources.sources.xml","w+")
+        sourcefile.write("<sources><source type=\"gen_xmltv\" channels=\"/etc/epgimport/suls_iptv_channels.channels.xml\">\n")
+        sourcefile.write("<description>"+PROVIDER.replace("&","&amp;")+"</description>\n")
+        sourcefile.write("<url>"+epgurl.replace("&","&amp;")+"</url>\n")		
+        sourcefile.write("</source></sources>\n")
+        sourcefile.close()
 
     # crontab not installed in enigma by default / pip also missing - not sure how to get this in at the moment  
     #def create_cron(self):
