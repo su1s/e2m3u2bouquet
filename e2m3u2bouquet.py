@@ -32,10 +32,11 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 import sys
 import os
 import datetime
+import tempfile
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-#from twisted.internet import reactor
-#from twisted.web.client import downloadPage
+from twisted.internet import reactor
+from twisted.web.client import downloadPage
 #from crontab import CronTab
 
 __all__ = []
@@ -102,22 +103,29 @@ class IPTVSetup:
                 raise(e)
         print("----Uninstall complete----")
     
-    # Download m3u file from url    
-    def download_m3u(self, url):
-        import urllib
+    def process_m3u_url(self, url):
+        path = tempfile.gettempdir()
+        filename = os.path.join(path, 'e2m3u2bouquet.m3u')
         print("\n----Downloading m3u file----")
         if DEBUG:
             print("m3uurl="+url)
+        downloadPage(url, filename).addCallbacks(self.after_m3u_url_download, self.download_m3u_url_fail, callbackArgs=(filename,True))        
+        return filename
+
+    def after_m3u_url_download(self, result, filename, deleteFile=False):	
+        print("\n----m3u file downloaded----")
         try:
-            webFile = urllib.urlopen(url)
-            localFile = open("e2m3u2bouquet.m3u", 'w')
-            localFile.write(webFile.read())
-            webFile.close()
+            if not os.path.getsize(filename):
+                raise Exception, "File is empty"
         except Exception, e:
-                raise(e)
-        print("file saved as "+os.getcwd()+"/e2m3u2bouquet.m3u")
-        return os.getcwd()+"/e2m3u2bouquet.m3u"
-    
+            self.download_m3u_url_fail(e)
+        reactor.stop()
+
+    def download_m3u_url_fail(self, failure):		
+        print("\n----m3u file download failed----")
+        print(failure)        
+        reactor.stop()        
+
     # core parsing routine 
     def parsem3u(self, filename,all_iptv_stream_types,multivod):
         # Extract and generate the following items from the m3u
@@ -127,9 +135,14 @@ class IPTVSetup:
         #3 stream url    
         #4 stream type
         #5 service Ref 
-        print("\n----Parsing m3u file----")
-        listchannels=[]
-		
+        print("\n----Parsing m3u file----")        
+        try:
+            if not os.path.getsize(filename):
+                raise Exception, "File is empty"
+        except Exception, e:
+            raise(e)
+            
+        listchannels=[]        
         with open (filename, "r") as myfile:
             for line in myfile:
                 if 'EXTM3U' in line: # First line we are not interested 
@@ -141,7 +154,7 @@ class IPTVSetup:
                     channeldict = {'category':channel[0],'title':channel[1],'tvgId':channel[2],'streamUrl':channel[3]}
                     listchannels.append(channeldict)
 					
-        # Clean up VOD and create stream types  
+        # Clean up VOD to single or multi bouquet and create stream types  
         for x in listchannels:
             if x['streamUrl'].endswith(('.mp4','mkv','.avi',"mpg")):
                 if multivod:
@@ -293,8 +306,9 @@ USAGE
     else:
         # Clean up any existing files
         e2m3uSetup.uninstaller()
-        # Download m3u 
-        m3ufile = e2m3uSetup.download_m3u(m3uurl)
+        # Download m3u         
+        m3ufile = e2m3uSetup.process_m3u_url(m3uurl)
+        reactor.run()        
         # parse m3u file
         listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,multivod)
         # get category list (keep order from m3u file)
