@@ -18,6 +18,7 @@
 #        - m3u file parsing updated ..
 #        - bouquet sort order now based on m3u file
 #        - create single channels and sources list for EPG-Importer. Only one source now needs to be enabled in the EPG-Importer plugin
+#        - Add Picon download option (thanks to Jose Sanchez for initial code and idea)
 
         
 '''
@@ -30,25 +31,28 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 '''
 #import twisted.python.runtime
 import sys
-import os
+import os, re, unicodedata
 import datetime
 import tempfile
+import urllib
+import imghdr
+from PIL import Image
+import glob
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-from twisted.internet import reactor
-from twisted.web.client import downloadPage
 #from crontab import CronTab
 
 __all__ = []
 __version__ = 0.31
 __date__ = '2017-06-04'
-__updated__ = '2017-06-11'
+__updated__ = '2017-06-17'
 
 DEBUG = 1
 TESTRUN = 1
 
 ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
+PICONSPATH = "/usr/share/enigma2/picon/"
 PROVIDER = "FabIPTV"
 
 class CLIError(Exception):
@@ -103,38 +107,30 @@ class IPTVSetup:
                 raise(e)
         print("----Uninstall complete----")
     
-    def process_m3u_url(self, url):
+    # Download m3u file from url
+    def download_m3u(self, url):
         path = tempfile.gettempdir()
         filename = os.path.join(path, 'e2m3u2bouquet.m3u')
         print("\n----Downloading m3u file----")
         if DEBUG:
             print("m3uurl="+url)
-        downloadPage(url, filename).addCallbacks(self.after_m3u_url_download, self.download_m3u_url_fail, callbackArgs=(filename,True))        
+        try:
+            urllib.urlretrieve(url, filename)
+        except Exception, e:
+            raise(e)                    
         return filename
 
-    def after_m3u_url_download(self, result, filename, deleteFile=False):	
-        print("\n----m3u file downloaded----")
-        try:
-            if not os.path.getsize(filename):
-                raise Exception, "File is empty"
-        except Exception, e:
-            self.download_m3u_url_fail(e)
-        reactor.stop()
-
-    def download_m3u_url_fail(self, failure):		
-        print("\n----m3u file download failed----")
-        print(failure)        
-        reactor.stop()        
-
     # core parsing routine 
-    def parsem3u(self, filename,all_iptv_stream_types,multivod):
+    def parsem3u(self, filename,all_iptv_stream_types,multivod,picons):
         # Extract and generate the following items from the m3u
         #0 category 
         #1 title 
         #2 tvg-id
-        #3 stream url    
-        #4 stream type
-        #5 service Ref 
+        #3 logo url        
+        #4 stream url    
+        #5 stream type
+        #6 service Ref 
+        
         print("\n----Parsing m3u file----")        
         try:
             if not os.path.getsize(filename):
@@ -148,10 +144,10 @@ class IPTVSetup:
                 if 'EXTM3U' in line: # First line we are not interested 
                     continue    
                 elif 'EXTINF:' in line: # Info line - work out group and output the line
-                    channel = [line.split('"')[7],(line.split('"')[8])[1:].strip(),line.split('"')[1]]
+                    channel = [line.split('"')[7],(line.split('"')[8])[1:].strip(),line.split('"')[1],line.split('"')[5]]
                 elif 'http:' in line:  
                     channel.append(line.strip())
-                    channeldict = {'category':channel[0],'title':channel[1],'tvgId':channel[2],'streamUrl':channel[3]}
+                    channeldict = {'category':channel[0],'title':channel[1],'tvgId':channel[2],'logoUrl':channel[3],'streamUrl':channel[4]}
                     listchannels.append(channeldict)
 					
         # Clean up VOD to single or multi bouquet and create stream types  
@@ -167,11 +163,12 @@ class IPTVSetup:
             else: 
                 x['streamType'] = "1"
                 
-        # Add Service references 
+        # Add Service references
         num =1 
         for x in listchannels:
             x['serviceRef'] = x['streamType']+":0:1:"+str(num)+":0:0:0:0:0:0"            
             num += 1
+               
         # Have a look at what we have      
         if DEBUG and TESTRUN:
             datafile = open(EPGIMPORTPATH + "channels.debug","w+")
@@ -179,8 +176,84 @@ class IPTVSetup:
                 datafile.write(":".join(line)+"\n")
             datafile.close()
         print("Completed parsing data...")
+        
+        if picons:
+            print("\n----Downloading Picon files please be patient----")
+            print("If no Picons exist this will take a few minutes")
+            for x in listchannels:
+                #Download Picon if not VOD
+                if not x['category'].startswith('VOD'):
+                    self.download_picon(x['logoUrl'],x['title'])
+            print("Picons downloads completed...")
+            print("Box will need restarted for Picons to show...")
         return listchannels
     
+    def download_picon(self, logourl, title):        
+        if logourl:
+            ext = ""
+            if not logourl.startswith("http"):
+                logourl = "http://{}".format(logourl)            
+            piconname = self.get_picon_name(title)
+            piconfilepath = os.path.join(PICONSPATH,piconname)           
+            existingpicon = filter(os.path.isfile, glob.glob(piconfilepath+'*'))
+
+            if not existingpicon:
+                if DEBUG:
+                    print("Picon file doesn't exist downloading")
+                    print('PiconURL: ' + logourl) 
+                try:                
+                    urllib.urlretrieve(logourl, piconfilepath)                    
+                except Exception, e:
+                    if DEBUG:                        
+                        print(e)
+                    return                
+                self.picon_post_processing(piconfilepath)
+
+    def picon_post_processing(self, piconfilepath):
+        ext = ""        
+        #get image type
+        try:                
+            ext = imghdr.what(piconfilepath)
+        except Exception, e:
+            if DEBUG:                        
+                print(e)
+            return 
+        #if image but not png convert to png
+        if (ext is not None) and (ext is not 'png'):                            
+            if DEBUG:
+                print("Converting Picon to png")
+            try:                
+                Image.open(piconfilepath).save(piconfilepath+".{}".format('png'))
+            except Exception, e:
+                if DEBUG:
+                    print(e)
+                return
+            try:
+                #remove non png file
+                os.remove(piconfilepath)
+            except Exception, e:
+                if DEBUG:                        
+                    print(e)
+                return
+        else:
+            #rename to correct extension
+            try:
+                os.rename(piconfilepath, piconfilepath+".{}".format(ext))
+            except Exception, e:
+                if DEBUG:                        
+                    print(e)
+            pass
+            
+    def get_picon_name(self, serviceName):
+        name = unicodedata.normalize('NFKD', unicode(serviceName, 'utf_8')).encode('ASCII', 'ignore')
+        excludeChars = ['/', '\\', '\'', '"', '`', '?', ' ', '(', ')', ':', '<', '>', '|', '.', '\n']
+        name = re.sub('[%s]' % ''.join(excludeChars), '', name)
+        name = name.replace('&', 'and')
+        name = name.replace('+', 'plus')
+        name = name.replace('*', 'star')
+        name = name.lower()
+        return name
+
     def create_bouquets(self, listcategories, listchannels):
         print("\n----Creating bouquets----")        
         for cat in listcategories:
@@ -270,6 +343,7 @@ USAGE
         parser.add_argument(dest="epgurl", help="URL source for XML TV epg data sources ", metavar="epgurl", nargs='+')
         parser.add_argument("-i", "--iptvtypes", dest="iptvtypes", action="store_true", help="Treat all stream references as IPTV stream type. (required for some enigma boxes)")
         parser.add_argument("-m", "--multivod", dest="multivod", action="store_true", help="Create multiple VOD bouquets based on category rather than 1 bouquet for all VOD content")
+        parser.add_argument("-p", "--picons", dest="picons", action="store_true", help="Automatically download of PIcons, this option will slow the execution")
         parser.add_argument("-U", "--uninstall", dest="uninstall", action="store_true", help="Uninstall all changes made by this script")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
         # Process arguments
@@ -279,6 +353,7 @@ USAGE
         iptvtypes = args.iptvtypes
         uninstall = args.uninstall
         multivod = args.multivod
+        picons = args.picons
     
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
@@ -307,10 +382,9 @@ USAGE
         # Clean up any existing files
         e2m3uSetup.uninstaller()
         # Download m3u         
-        m3ufile = e2m3uSetup.process_m3u_url(m3uurl)
-        reactor.run()        
+        m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
-        listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,multivod)
+        listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,multivod,picons)
         # get category list (keep order from m3u file)
         for x in listchannels:
             if x['category'] not in listcategories:
@@ -341,4 +415,5 @@ if __name__ == "__main__":
     if TESTRUN:
         EPGIMPORTPATH="H:/Satelite Stuff/epgimport/"
         ENIGMAPATH="H:/Satelite Stuff/enigma2/"
+        PICONSPATH = "H:/Satelite Stuff/picons/"
     sys.exit(main())
