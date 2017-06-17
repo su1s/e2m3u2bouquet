@@ -246,7 +246,7 @@ class IPTVSetup:
             
     def get_picon_name(self, serviceName):
         name = unicodedata.normalize('NFKD', unicode(serviceName, 'utf_8')).encode('ASCII', 'ignore')
-        excludeChars = ['/', '\\', '\'', '"', '`', '?', ' ', '(', ')', ':', '<', '>', '|', '.', '\n']
+        excludeChars = ['/', '\\', '\'', '"', '`', '?', ' ', '(', ')', ':', '<', '>', '|', '.', '\n', '!']
         name = re.sub('[%s]' % ''.join(excludeChars), '', name)
         name = name.replace('&', 'and')
         name = name.replace('+', 'plus')
