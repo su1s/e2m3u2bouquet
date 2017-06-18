@@ -29,7 +29,6 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 @license:    GNU GENERAL PUBLIC LICENSE version 3
 @deffield    updated: Updated
 '''
-#import twisted.python.runtime
 import sys
 import os, re, unicodedata
 import datetime
@@ -45,7 +44,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = 0.31
 __date__ = '2017-06-04'
-__updated__ = '2017-06-17'
+__updated__ = '2017-06-18'
 
 DEBUG = 1
 TESTRUN = 1
@@ -138,7 +137,8 @@ class IPTVSetup:
         except Exception, e:
             raise(e)
             
-        listchannels=[]        
+        listcategories=[]
+        listchannels=[]
         with open (filename, "r") as myfile:
             for line in myfile:
                 if 'EXTM3U' in line: # First line we are not interested 
@@ -162,18 +162,30 @@ class IPTVSetup:
                 x['streamType'] = "4097"
             else: 
                 x['streamType'] = "1"
-                
+        
+        # get category list (keep order from m3u file)
+        for x in listchannels:
+            if x['category'] not in listcategories:
+                listcategories.append(x['category'])
+        #Sort the channels by category (keep category order from m3u file)
+        #listchannels.sort(key=lambda x: x['category'])
+        #listchannels.sort(key=lambda x: listcategories.index(x['category']))        
+        category_order_dict = {category: index for index, category in enumerate(listcategories)}
+        listchannels.sort(key=lambda x: category_order_dict[x['category']])
+
         # Add Service references
         num =1 
         for x in listchannels:
             x['serviceRef'] = x['streamType']+":0:1:"+str(num)+":0:0:0:0:0:0"            
             num += 1
-               
         # Have a look at what we have      
         if DEBUG and TESTRUN:
             datafile = open(EPGIMPORTPATH + "channels.debug","w+")
-            for line in listchannels:
-                datafile.write(":".join(line)+"\n")
+            for line in listchannels:                
+                linevals = ""
+                for key, value in line.items():
+                    linevals += value + ":"
+                datafile.write(linevals+"\n")
             datafile.close()
         print("Completed parsing data...")
         
@@ -186,11 +198,10 @@ class IPTVSetup:
                     self.download_picon(x['logoUrl'],x['title'])
             print("Picons downloads completed...")
             print("Box will need restarted for Picons to show...")
-        return listchannels
+        return (listcategories, listchannels)
     
     def download_picon(self, logourl, title):        
-        if logourl:
-            ext = ""
+        if logourl:            
             if not logourl.startswith("http"):
                 logourl = "http://{}".format(logourl)            
             piconname = self.get_picon_name(title)
@@ -368,8 +379,7 @@ USAGE
         return 2
     
     
-    ## Core program logic starts here 
-    listcategories = []
+    ## Core program logic starts here     
     e2m3uSetup = IPTVSetup()
     if uninstall:
         # Clean up any existing files
@@ -384,13 +394,7 @@ USAGE
         # Download m3u         
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
-        listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,multivod,picons)
-        # get category list (keep order from m3u file)
-        for x in listchannels:
-            if x['category'] not in listcategories:
-                listcategories.append(x['category'])
-        #sort channels by category
-		listchannels = sorted(listchannels, key=lambda x: (x['category']))
+        listcategories, listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,multivod,picons)        
         # Create bouquet files 
         e2m3uSetup.create_bouquets(listcategories,listchannels)        
         # Now create custom channels for each bouquet
@@ -415,5 +419,5 @@ if __name__ == "__main__":
     if TESTRUN:
         EPGIMPORTPATH="H:/Satelite Stuff/epgimport/"
         ENIGMAPATH="H:/Satelite Stuff/enigma2/"
-        PICONSPATH = "H:/Satelite Stuff/picons/"
+        PICONSPATH="H:/Satelite Stuff/picons/"
     sys.exit(main())
