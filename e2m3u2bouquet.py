@@ -120,7 +120,7 @@ class IPTVSetup:
         return filename
 
     # core parsing routine 
-    def parsem3u(self, filename,all_iptv_stream_types,multivod,picons):
+    def parsem3u(self, filename,all_iptv_stream_types,singlevod,picons, delimiter_category ,delimiter_title, delimiter_tvgid, delimiter_logourl):
         # Extract and generate the following items from the m3u
         #0 category 
         #1 title 
@@ -144,7 +144,7 @@ class IPTVSetup:
                 if 'EXTM3U' in line: # First line we are not interested 
                     continue    
                 elif 'EXTINF:' in line: # Info line - work out group and output the line
-                    channel = [line.split('"')[7],(line.split('"')[8])[1:].strip(),line.split('"')[1],line.split('"')[5]]
+                    channel = [line.split('"')[delimiter_category ],(line.split('"')[delimiter_title])[1:].strip(),line.split('"')[delimiter_tvgid],line.split('"')[delimiter_logourl]]
                 elif 'http:' in line:  
                     channel.append(line.strip())
                     channeldict = {'category':channel[0],'title':channel[1],'tvgId':channel[2],'logoUrl':channel[3],'streamUrl':channel[4]}
@@ -153,7 +153,7 @@ class IPTVSetup:
         # Clean up VOD to single or multi bouquet and create stream types  
         for x in listchannels:
             if x['streamUrl'].endswith(('.mp4','mkv','.avi',"mpg")):
-                if multivod:
+                if not singlevod:
                     x['category'] = "VOD - "+x['category']
                 else:
                     x['category'] = "VOD"
@@ -350,22 +350,62 @@ USAGE
     try:
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
-        parser.add_argument(dest="m3uurl", help="URL to download m3u data from  ", metavar="m3uurl", nargs='+')
-        parser.add_argument(dest="epgurl", help="URL source for XML TV epg data sources ", metavar="epgurl", nargs='+')
+        # URL Based Setup 
+        urlgroup = parser.add_argument_group("URL Based Setup")
+        urlgroup.add_argument("-m", "--m3uurl", dest="m3uurl", action="store", help="URL to download m3u data from (required)")
+        urlgroup.add_argument("-e", "--epgurl" ,dest="epgurl", action="store", help="URL source for XML TV epg data sources")
+        urlgroup.add_argument("-d1", "--delimiter_category" ,dest="delimiter_category", action="store", help="Delimiter (\") count for category - default = 7")
+        urlgroup.add_argument("-d2", "--delimiter_title" ,dest="delimiter_title", action="store", help="Delimiter (\") count for title - default = 8")
+        urlgroup.add_argument("-d3", "--delimiter_tvgid" ,dest="delimiter_tvgid", action="store", help="Delimiter (\") count for tvg_id - default = 1")
+        urlgroup.add_argument("-d4", "--delimiter_logourl" ,dest="delimiter_logourl", action="store", help="Delimiter (\") count for logourl - default = 5")
+        # Provider based setup
+        providergroup = parser.add_argument_group("Provider Based Setup")
+        providergroup.add_argument("-n", "--providername", dest="providername", action="store", help="Host IPTV provider name (FAB/EPIC) (required)")
+        providergroup.add_argument("-u", "--username" ,dest="username", action="store", help="Your IPTV username (required)" )
+        providergroup.add_argument("-p", "--password" ,dest="password", action="store", help="Your IPTV password (required)")
+
+        
+        # Options 
         parser.add_argument("-i", "--iptvtypes", dest="iptvtypes", action="store_true", help="Treat all stream references as IPTV stream type. (required for some enigma boxes)")
-        parser.add_argument("-m", "--multivod", dest="multivod", action="store_true", help="Create multiple VOD bouquets based on category rather than 1 bouquet for all VOD content")
-        parser.add_argument("-p", "--picons", dest="picons", action="store_true", help="Automatically download of PIcons, this option will slow the execution")
+        parser.add_argument("-s", "--singlevod", dest="singlevod", action="store_true", help="Create single VOD bouquets rather multiple VOD bouquets")
+        parser.add_argument("-P", "--picons", dest="picons", action="store_true", help="Automatically download of Picons, this option will slow the execution")
         parser.add_argument("-U", "--uninstall", dest="uninstall", action="store_true", help="Uninstall all changes made by this script")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
+        
         # Process arguments
         args = parser.parse_args()
-        m3uurl = args.m3uurl[0]
-        epgurl = args.epgurl[0]
+        m3uurl = args.m3uurl
+        epgurl = args.epgurl
         iptvtypes = args.iptvtypes
         uninstall = args.uninstall
-        multivod = args.multivod
+        singlevod = args.singlevod
         picons = args.picons
-    
+        provider = args.providername
+        username = args.username 
+        password = args.password 
+        delimiter_category = args.delimiter_category
+        delimiter_title = args.delimiter_title
+        delimiter_tvgid = args.delimiter_tvgid
+        delimiter_logourl= args.delimiter_logourl
+        # set delimiter positions if required 
+        if delimiter_category is None:
+            delimiter_category = 7
+        if delimiter_title is None:
+            delimiter_title = 8
+        if delimiter_tvgid is None:
+            delimiter_tvgid = 1
+        if delimiter_logourl is None:
+            delimiter_logourl = 5
+        # Set epg to rytec if nothing else provided 
+        if epgurl is None:
+            epgurl = "http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz"
+        # Check we have enough to proceed 
+        if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)):
+            print('Please ensure correct command line options as passed to the program, for help use --help"')
+            # Work out how to print the usage string here 
+            sys.exit(1)
+        
+        
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
         return 0
@@ -394,7 +434,7 @@ USAGE
         # Download m3u         
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
-        listcategories, listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,multivod,picons)        
+        listcategories, listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,singlevod,picons,delimiter_category ,delimiter_title, delimiter_tvgid, delimiter_logourl)      
         # Create bouquet files 
         e2m3uSetup.create_bouquets(listcategories,listchannels)        
         # Now create custom channels for each bouquet
