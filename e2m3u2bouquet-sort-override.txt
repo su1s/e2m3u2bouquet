@@ -1,0 +1,29 @@
+#e2m3u2bouquet Custom bouquet mapping
+#enter each category on a new line in ther order you wish
+24/7 Channels
+UK Entertainment
+UK Documentaries
+UK Movies
+UK Sky Sports
+UK BT Sport
+UK Other Sports
+UK News
+UK Music
+UK Kids
+US/Canada Entertainment
+US/Canada Documentaries
+US/CA Movies
+US/CA Music
+US/Canada Sports
+Live Football
+Live MLB
+Live NBA
+Live NFL
+Live NHL
+US/Canada News
+US/Canada Kids
+PPV EVENTS
+Asian Channels
+International Sports
+International Entertainment
+Radio Stations UK & EIR

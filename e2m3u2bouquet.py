@@ -16,9 +16,9 @@
 #      -  debug \ testrun modes  
 # v0.3.1 - Restructure (again) of code base to bring in some of dougs better structures
 #        - m3u file parsing updated ..
-#        - bouquet sort order now based on m3u file
 #        - create single channels and sources list for EPG-Importer. Only one source now needs to be enabled in the EPG-Importer plugin
 #        - Add Picon download option (thanks to Jose Sanchez for initial code and idea)
+#        - Added custom bouquet ordering
 
         
 '''
@@ -32,10 +32,10 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 import sys
 import os, re, unicodedata
 import datetime
-import tempfile
 import urllib
 import imghdr
 from PIL import Image
+from collections import OrderedDict
 import glob
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
@@ -44,7 +44,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = 0.31
 __date__ = '2017-06-04'
-__updated__ = '2017-06-18'
+__updated__ = '2017-06-20'
 
 DEBUG = 1
 TESTRUN = 1
@@ -108,8 +108,7 @@ class IPTVSetup:
     
     # Download m3u file from url
     def download_m3u(self, url):
-        path = tempfile.gettempdir()
-        filename = os.path.join(path, 'e2m3u2bouquet.m3u')
+        filename = os.path.join(os.getcwd(), 'e2m3u2bouquet.m3u')
         print("\n----Downloading m3u file----")
         if DEBUG:
             print("m3uurl="+url)
@@ -167,7 +166,15 @@ class IPTVSetup:
         for x in listchannels:
             if x['category'] not in listcategories:
                 listcategories.append(x['category'])
-        #Sort the channels by category (keep category order from m3u file)
+        #sort categories by name
+        listcategories.sort()
+        #sort categories by custom order (if exists)
+        sortedcategories = self.parse_bouquet_map()
+        sortedcategories.extend(listcategories)
+        #remove duplicates, keep order
+        listcategories = OrderedDict((x, True) for x in sortedcategories).keys()
+        
+        #Sort the channels by category
         #listchannels.sort(key=lambda x: x['category'])
         #listchannels.sort(key=lambda x: listcategories.index(x['category']))        
         category_order_dict = {category: index for index, category in enumerate(listcategories)}
@@ -199,6 +206,16 @@ class IPTVSetup:
             print("Picons downloads completed...")
             print("Box will need restarted for Picons to show...")
         return (listcategories, listchannels)
+    
+    def parse_bouquet_map(self):
+        category_order=[]
+        mappingfile=os.getcwd()+"/e2m3u2bouquet-sort-override.txt"
+        if os.path.isfile(mappingfile):
+            with open (mappingfile, "r") as myfile:
+                for line in myfile:
+                    if not line.startswith('#'):
+                        category_order.append(line.rstrip("\n\r"))
+        return category_order
     
     def download_picon(self, logourl, title):        
         if logourl:            
@@ -266,23 +283,24 @@ class IPTVSetup:
         return name
 
     def create_bouquets(self, listcategories, listchannels):
-        print("\n----Creating bouquets----")        
+        print("\n----Creating bouquets----")
         for cat in listcategories:
-            #create file
-            if DEBUG:
-                print("Creating: "+ENIGMAPATH + "userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv")
-            bouquetfile = open(ENIGMAPATH + "userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv","w+")			
-            bouquetfile.write("#NAME IPTV - "+cat+"\n")
-            for x in listchannels:
-                if x['category'] == cat:
-                    bouquetfile.write("#SERVICE "+x['serviceRef']+":"+x['streamUrl'].replace(":","%3a")+":"+x['title']+"\n")
-                    bouquetfile.write("#DESCRIPTION "+x['title']+"\n")
-            bouquetfile.close()
+            if any(x['category'] == cat for x in listchannels):       
+                #create file
+                if DEBUG:
+                    print("Creating: "+ENIGMAPATH + "userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv")
+                bouquetfile = open(ENIGMAPATH + "userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv","w+")			
+                bouquetfile.write("#NAME IPTV - "+cat+"\n")
+                for x in listchannels:
+                    if x['category'] == cat:
+                        bouquetfile.write("#SERVICE "+x['serviceRef']+":"+x['streamUrl'].replace(":","%3a")+":"+x['title']+"\n")
+                        bouquetfile.write("#DESCRIPTION "+x['title']+"\n")
+                bouquetfile.close()
 
-            # Add to main bouquets.tv file
-            tvfile = open(ENIGMAPATH + "bouquets.tv","a")
-            tvfile.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv\" ORDER BY bouquet\n")
-            tvfile.close()        
+                # Add to main bouquets.tv file
+                tvfile = open(ENIGMAPATH + "bouquets.tv","a")
+                tvfile.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_"+cat.replace(" ","_").replace("/","_")+".tv\" ORDER BY bouquet\n")
+                tvfile.close()        
         print("bouquets created ...")      
     
     def reloadBouquets(self):        
@@ -299,10 +317,11 @@ class IPTVSetup:
         nonvodcatgories = (cat for cat in listcategories if not cat.startswith('VOD'))
         channelfile.write("<channels>\n")
         for cat in nonvodcatgories:
-            channelfile.write("<!-- "+cat.replace("&","&amp;")+" -->\n")            
-            for x in listchannels:
-                if x['category'] == cat:					
-                    channelfile.write("<channel id=\""+x['tvgId'].replace("&","&amp;")+"\">"+x['serviceRef']+":http%3a//example.m3u8</channel> <!-- "+x['title'].replace("&","&amp;")+" -->\n")						
+            if any(x['category'] == cat for x in listchannels):
+                channelfile.write("<!-- "+cat.replace("&","&amp;")+" -->\n")            
+                for x in listchannels:
+                    if x['category'] == cat:					
+                        channelfile.write("<channel id=\""+x['tvgId'].replace("&","&amp;")+"\">"+x['serviceRef']+":http%3a//example.m3u8</channel> <!-- "+x['title'].replace("&","&amp;")+" -->\n")						
         channelfile.write("</channels>\n")
         channelfile.close()
         
