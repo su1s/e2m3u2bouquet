@@ -168,6 +168,7 @@ class IPTVSetup:
                 listcategories.append(x['category'])
         #sort categories by name
         listcategories.sort()
+        self.save_bouquet_map(listcategories)
         #sort categories by custom order (if exists)
         sortedcategories = self.parse_bouquet_map()
         sortedcategories.extend(listcategories)
@@ -216,6 +217,16 @@ class IPTVSetup:
                     if not line.startswith('#'):
                         category_order.append(line.rstrip("\n\r"))
         return category_order
+    
+    def save_bouquet_map(self, listcategories):
+        mappingfile=os.getcwd()+"/e2m3u2bouquet-sort-default.txt"
+        nonvodcatgories = (cat for cat in listcategories if not cat.startswith('VOD'))
+        with open(mappingfile, "w") as myfile:
+            myfile.write("#e2m3u2bouquet Custom bouquet mapping\n")
+            myfile.write("#enter each category on a new line in the order you wish\n")
+            for x in nonvodcatgories:
+                if x:
+                    myfile.write(x + "\n")        
     
     def download_picon(self, logourl, title):        
         if logourl:            

@@ -1,5 +1,5 @@
 #e2m3u2bouquet Custom bouquet mapping
-#enter each category on a new line in ther order you wish
+#enter each category on a new line in the order you wish
 24/7 Channels
 UK Entertainment
 UK Documentaries
