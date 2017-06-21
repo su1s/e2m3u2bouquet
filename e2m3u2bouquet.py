@@ -1,4 +1,4 @@
-#!/usr/bin/env python 
+#!/usr/bin/python 
 # encoding: utf-8
 # Change notes 
 # v0.1 - Initial version (Dave Sully) 
@@ -19,6 +19,13 @@
 #        - bouquet sort order now based on m3u file
 #        - create single channels and sources list for EPG-Importer. Only one source now needs to be enabled in the EPG-Importer plugin
 #        - Add Picon download option (thanks to Jose Sanchez for initial code and idea)
+#        - Better args layout and processing
+#        - Mutli VOD by default 
+#        - Named provider support (= simplified command line)
+#        - Delimiter options for user defined parsing of the m3u file
+ 
+
+
 
         
 '''
@@ -42,17 +49,32 @@ from argparse import RawDescriptionHelpFormatter
 #from crontab import CronTab
 
 __all__ = []
-__version__ = 0.31
+__version__ = 0.32
 __date__ = '2017-06-04'
-__updated__ = '2017-06-18'
+__updated__ = '2017-06-21'
 
-DEBUG = 1
-TESTRUN = 1
+DEBUG = 0
+TESTRUN = 0
 
 ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
 PICONSPATH = "/usr/share/enigma2/picon/"
-PROVIDER = "FabIPTV"
+PROVIDERS =[]
+#FAB
+PROVIDERS.append({'name':"FAB",'m3u':"http://stream.fabiptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts", 
+              'epg':"http://stream.fabiptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD", 
+              'delimiter_category':7 , 
+              'delimiter_title':8, 
+              'delimiter_tvgid':1,
+              'delimiter_logourl':5 })
+#EPIC
+PROVIDERS.append({'name':"EPIC",'m3u':"http://epicstream.tv:7000/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts", 
+               'epg':"http://149.56.14.45:1000/guide.xml", 
+               'delimiter_category':7 , 
+               'delimiter_title':8, 
+               'delimiter_tvgid':1, 
+               'delimiter_logourl':5 })
+
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -120,7 +142,7 @@ class IPTVSetup:
         return filename
 
     # core parsing routine 
-    def parsem3u(self, filename,all_iptv_stream_types,singlevod,picons, delimiter_category ,delimiter_title, delimiter_tvgid, delimiter_logourl):
+    def parsem3u(self, filename,all_iptv_stream_types,singlevod,picons, delimiter_category ,delimiter_title, delimiter_tvgid, delimiter_logourl, iconpath):
         # Extract and generate the following items from the m3u
         #0 category 
         #1 title 
@@ -195,17 +217,17 @@ class IPTVSetup:
             for x in listchannels:
                 #Download Picon if not VOD
                 if not x['category'].startswith('VOD'):
-                    self.download_picon(x['logoUrl'],x['title'])
+                    self.download_picon(x['logoUrl'],x['title'],iconpath)
             print("Picons downloads completed...")
             print("Box will need restarted for Picons to show...")
         return (listcategories, listchannels)
     
-    def download_picon(self, logourl, title):        
+    def download_picon(self, logourl, title, iconpath):        
         if logourl:            
             if not logourl.startswith("http"):
                 logourl = "http://{}".format(logourl)            
             piconname = self.get_picon_name(title)
-            piconfilepath = os.path.join(PICONSPATH,piconname)           
+            piconfilepath = os.path.join(iconpath,piconname)           
             existingpicon = filter(os.path.isfile, glob.glob(piconfilepath+'*'))
 
             if not existingpicon:
@@ -291,7 +313,7 @@ class IPTVSetup:
             os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=2 > /dev/null 2>&1 &")
             print("bouquets reloaded...")
     
-    def create_epgimporter_config(self, listcategories, listchannels, epgurl):
+    def create_epgimporter_config(self, listcategories, listchannels, epgurl, provider):
         if DEBUG:
             print("creating EPGImporter config")
         #create channels file        
@@ -309,21 +331,23 @@ class IPTVSetup:
         #create custom sources file
         sourcefile  = open(EPGIMPORTPATH + "suls_iptv_sources.sources.xml","w+")
         sourcefile.write("<sources><source type=\"gen_xmltv\" channels=\"/etc/epgimport/suls_iptv_channels.channels.xml\">\n")
-        sourcefile.write("<description>"+PROVIDER.replace("&","&amp;")+"</description>\n")
+        sourcefile.write("<description>"+provider.replace("&","&amp;")+"</description>\n")
         sourcefile.write("<url>"+epgurl.replace("&","&amp;")+"</url>\n")		
         sourcefile.write("</source></sources>\n")
         sourcefile.close()
-
-    # crontab not installed in enigma by default / pip also missing - not sure how to get this in at the moment  
-    #def create_cron(self):
-        #if not TESTRUN:
-            #print("\n----Creating cron job----")
-            #cron = CronTab(user="root")
-            #job = cron.new(command = 'python /home/root/e2m3u2bouquet.py "http://stream.fabiptv.com:25461/get.php?username=UN&password=PW&type=m3u_plus&output=ts" "http://stream.fabiptv.com:25461/xmltv.php?username=UN&password=PW"')
-            #job.comment = "e2m3u2bouquet"
-            #job.minute.every(2)
-            #cron.write()
-            #print("cron job created, bouquets will autoupdate...")
+    
+    def process_provider(self,provider,username,password):
+        supported_providers = ""
+        for line in PROVIDERS:
+            supported_providers += " "+line['name']
+            if line['name'].upper() == provider.upper():
+                if DEBUG:
+                    print("----Provider setup details----")
+                    print("m3u = " + line['m3u'].replace("USERNAME",username).replace("PASSWORD",password))
+                    print("epg = " + line['epg'].replace("USERNAME",username).replace("PASSWORD",password)+"\n")
+                return line['m3u'].replace("USERNAME",username).replace("PASSWORD",password),line['epg'].replace("USERNAME",username).replace("PASSWORD",password), line['delimiter_category'],line['delimiter_title'], line['delimiter_tvgid'], line['delimiter_logourl'] , supported_providers
+        # If we get here the supplied provider is invalid 
+        return "NOTFOUND","",0,0,0,0, supported_providers
     
 def main(argv=None): # IGNORE:C0111
     #Command line options.
@@ -363,12 +387,11 @@ USAGE
         providergroup.add_argument("-n", "--providername", dest="providername", action="store", help="Host IPTV provider name (FAB/EPIC) (required)")
         providergroup.add_argument("-u", "--username" ,dest="username", action="store", help="Your IPTV username (required)" )
         providergroup.add_argument("-p", "--password" ,dest="password", action="store", help="Your IPTV password (required)")
-
-        
         # Options 
         parser.add_argument("-i", "--iptvtypes", dest="iptvtypes", action="store_true", help="Treat all stream references as IPTV stream type. (required for some enigma boxes)")
         parser.add_argument("-s", "--singlevod", dest="singlevod", action="store_true", help="Create single VOD bouquets rather multiple VOD bouquets")
         parser.add_argument("-P", "--picons", dest="picons", action="store_true", help="Automatically download of Picons, this option will slow the execution")
+        parser.add_argument("-q", "--iconpath" ,dest="iconpath", action="store", help="Option path to store picons, if not supplied defaults to /usr/share/enigma2/picon/")
         parser.add_argument("-U", "--uninstall", dest="uninstall", action="store_true", help="Uninstall all changes made by this script")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
         
@@ -380,6 +403,7 @@ USAGE
         uninstall = args.uninstall
         singlevod = args.singlevod
         picons = args.picons
+        iconpath = args.iconpath
         provider = args.providername
         username = args.username 
         password = args.password 
@@ -396,15 +420,19 @@ USAGE
             delimiter_tvgid = 1
         if delimiter_logourl is None:
             delimiter_logourl = 5
-        # Set epg to rytec if nothing else provided 
+        # Set epg to rytec if nothing else provided
         if epgurl is None:
             epgurl = "http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz"
+        # Set piconpath
+        if iconpath is None:
+            iconpath = PICONSPATH
+        if provider is None:
+            provider = "E2m3u2Bouquet"
         # Check we have enough to proceed 
         if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)):
             print('Please ensure correct command line options as passed to the program, for help use --help"')
             # Work out how to print the usage string here 
             sys.exit(1)
-        
         
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
@@ -418,7 +446,6 @@ USAGE
         sys.stderr.write(indent + "  for help use --help")
         return 2
     
-    
     ## Core program logic starts here     
     e2m3uSetup = IPTVSetup()
     if uninstall:
@@ -429,28 +456,29 @@ USAGE
         print("Uninstall only, program exiting ...")
         sys.exit(1) # Quit here if we just want to uninstall
     else:
-        # Clean up any existing files
+        # Work out provider based setup if thats what we have
+        if ((provider is not None) and (username is not None) or (password is not None)):
+            m3uurl,epgurl,delimiter_category,delimiter_title, delimiter_tvgid, delimiter_logourl , supported_providers = e2m3uSetup.process_provider(provider,username,password)
+         # Clean up any existing files
         e2m3uSetup.uninstaller()
         # Download m3u         
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
-        listcategories, listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,singlevod,picons,delimiter_category ,delimiter_title, delimiter_tvgid, delimiter_logourl)      
+        listcategories, listchannels = e2m3uSetup.parsem3u(m3ufile,iptvtypes,singlevod,picons,delimiter_category ,delimiter_title, delimiter_tvgid, delimiter_logourl, iconpath)      
         # Create bouquet files 
         e2m3uSetup.create_bouquets(listcategories,listchannels)        
         # Now create custom channels for each bouquet
         print("\n----Creating EPG-Importer config ----")        
-        e2m3uSetup.create_epgimporter_config(listcategories,listchannels,epgurl)
+        e2m3uSetup.create_epgimporter_config(listcategories,listchannels,epgurl, provider)
         print("EPG-Importer config created...")            
         # reload bouquets
         e2m3uSetup.reloadBouquets()
-        # Now create a cron job 
-        #create_cron()
         print("\n********************************")        
         print("Engima2 IPTV bouquets created ! ")
         print("********************************")        
         print("\nTo enable EPG data")
         print("Please open EPG-Importer plugin.. ")
-        print("Select sources and enable the new IPTV sources (will be listed as {})".format(PROVIDER))
+        print("Select sources and enable the new IPTV sources (will be listed as {})".format(provider))
         print("Save the selected sources, press yellow button to start manual import")
         print("You can then set EPG-Importer to automatically import the EPG every day")
 
