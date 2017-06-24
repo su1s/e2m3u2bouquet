@@ -22,7 +22,7 @@ Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further informa
 #### v0.4
 * Restructure (again) of code base to bring in some of dougs better structures
 * m3u file parsing updated
-* bouquet sort order now based on m3u file
+* channel ordering based on m3u file, bouquet ordering alphabetically or custom.
 * create single channels and sources list for EPG-Importer. Only one source now needs to be enabled in the EPG-Importer plugin
 * Add Picon download option (thanks to Jose Sanchez for initial code and idea)
 * Better args layout and processing
