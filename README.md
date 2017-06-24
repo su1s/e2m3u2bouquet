@@ -29,3 +29,4 @@ Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further informa
 * Mutli VOD by default
 * Named provider support (= simplified command line)
 * Delimiter options for user defined parsing of the m3u file
+* Ability to chose own bouquet sort order
