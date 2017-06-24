@@ -1,29 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # encoding: utf-8
-# Change notes
-# v0.1 - Initial version (Dave Sully)
-# v0.2 - Updated to use providers epg, doesn't need reboot to take effect - so could be scheduled from cron job (Doug MacKay)
-# v0.3 - Complete restructure of the code base to some thing more usable going forward, incorporated Dougs changes to EPG data source  (Dave Sully)
-#      -  tvg-id now included in the channels
-#      -  better parsing of m3u data (Doug MacKay)
-#      -  downloads m3u file from url
-#      -  sets custom source to providers xml tv feed (as per Dougs v0.2)
-#      -  fixed IPTV streams not playing / having incorrect stream type
-#      -  option to make all streams IPTV type
-#      -  option to split VOD bouquets by initial category
-#      -  all paramters arg based so in theory works for other providers and can be croned
-#      -  auto reloads bouquets (Doug MacKay)
-#      -  debug \ testrun modes
-# v0.3.1 - Restructure (again) of code base to bring in some of dougs better structures
-#        - m3u file parsing updated ..
-#        - create single channels and sources list for EPG-Importer. Only one source now needs to be enabled in the EPG-Importer plugin
-#        - Add Picon download option (thanks to Jose Sanchez for initial code and idea)
-#        - Added custom bouquet ordering
-#        - Better args layout and processing
-#        - Mutli VOD by default
-#        - Named provider support (= simplified command line)
-#        - Delimiter options for user defined parsing of the m3u file
-
 
 '''
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
@@ -45,9 +21,10 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = 0.32
+__version__ = 0.40
 __date__ = '2017-06-04'
-__updated__ = '2017-06-22'
+__updated__ = '2017-06-24'
+
 
 DEBUG = 0
 TESTRUN = 0
@@ -56,35 +33,23 @@ ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
 PICONSPATH = "/usr/share/enigma2/picon/"
 PROVIDERS = []
-# FAB
-PROVIDERS.append({'name':"FAB", 'm3u':"http://stream.fabiptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts",
-              'epg':"http://stream.fabiptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD",
-              'delimiter_category':7 ,
-              'delimiter_title':8,
-              'delimiter_tvgid':1,
-              'delimiter_logourl':5 })
-# EPIC
-PROVIDERS.append({'name':"EPIC", 'm3u':"http://epicstream.tv:7000/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts",
-               'epg':"http://149.56.14.45:1000/guide.xml",
-               'delimiter_category':7 ,
-               'delimiter_title':8,
-               'delimiter_tvgid':1,
-               'delimiter_logourl':5 })
-
+PROVIDERSURL = "https://raw.githubusercontent.com/su1s/e2m3u2bouquet/providers.txt"
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
     def __init__(self, msg):
         super(CLIError).__init__(type(self))
         self.msg = "E: %s" % msg
+
     def __str__(self):
         return self.msg
+
     def __unicode__(self):
         return self.msg
 
 class IPTVSetup:
     def __init__(self):
-        # welcome message
+        # welcome message 
         print("\n********************************")
         print("Starting Engima2 IPTV bouquets")
         print(str(datetime.datetime.now()))
@@ -121,7 +86,7 @@ class IPTVSetup:
             bakfile.close()
             tvfile.close()
         except Exception, e:
-                raise(e)
+            raise (e)
         print("----Uninstall complete----")
 
     # Download m3u file from url
@@ -133,11 +98,25 @@ class IPTVSetup:
         try:
             urllib.urlretrieve(url, filename)
         except Exception, e:
-            raise(e)
+            raise (e)
         return filename
 
-    # core parsing routine
-    def parsem3u(self, filename, all_iptv_stream_types, singlevod, picons, delimiter_category, delimiter_title, delimiter_tvgid, delimiter_logourl, iconpath):
+    # Download providers file from url
+    def download_providers(self, url):
+        path = tempfile.gettempdir()
+        filename = os.path.join(path, 'providers.txt')
+        print("\n----Downloading providers file----")
+        if DEBUG:
+            print("providers url =" + url)
+        try:
+            urllib.urlretrieve(url, filename)
+        except Exception, e:
+            raise (e)
+        return filename
+
+    # core parsing routine 
+    def parsem3u(self, filename, all_iptv_stream_types, singlevod, picons, delimiter_category, delimiter_title,
+                 delimiter_tvgid, delimiter_logourl, iconpath):
         # Extract and generate the following items from the m3u
         # 0 category
         # 1 title
@@ -145,26 +124,27 @@ class IPTVSetup:
         # 3 logo url
         # 4 stream url
         # 5 stream type
-        # 6 service Ref
+        # 6 service Ref 
 
         print("\n----Parsing m3u file----")
         try:
             if not os.path.getsize(filename):
                 raise Exception, "File is empty"
         except Exception, e:
-            raise(e)
-
+            raise (e)
         listcategories = []
         listchannels = []
-        with open (filename, "r") as myfile:
+        with open(filename, "r") as myfile:
             for line in myfile:
-                if 'EXTM3U' in line:  # First line we are not interested
+                if 'EXTM3U' in line:  # First line we are not interested 
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
-                    channel = [line.split('"')[delimiter_category], (line.split('"')[delimiter_title])[1:].strip(), line.split('"')[delimiter_tvgid], line.split('"')[delimiter_logourl]]
+                    channel = [line.split('"')[delimiter_category], (line.split('"')[delimiter_title])[1:].strip(),
+                               line.split('"')[delimiter_tvgid], line.split('"')[delimiter_logourl]]
                 elif 'http:' in line:
                     channel.append(line.strip())
-                    channeldict = {'category':channel[0], 'title':channel[1], 'tvgId':channel[2], 'logoUrl':channel[3], 'streamUrl':channel[4]}
+                    channeldict = {'category': channel[0], 'title': channel[1], 'tvgId': channel[2],
+                                   'logoUrl': channel[3], 'streamUrl': channel[4]}
                     listchannels.append(channeldict)
 
         # Clean up VOD to single or multi bouquet and create stream types
@@ -355,11 +335,33 @@ class IPTVSetup:
 
         # create custom sources file
         sourcefile = open(EPGIMPORTPATH + "suls_iptv_sources.sources.xml", "w+")
-        sourcefile.write("<sources><source type=\"gen_xmltv\" channels=\"/etc/epgimport/suls_iptv_channels.channels.xml\">\n")
+        sourcefile.write(
+            "<sources><source type=\"gen_xmltv\" channels=\"/etc/epgimport/suls_iptv_channels.channels.xml\">\n")
         sourcefile.write("<description>" + provider.replace("&", "&amp;") + "</description>\n")
-        sourcefile.write("<url>" + epgurl.replace("&","&amp;") + "</url>\n")
+        sourcefile.write("<url>" + epgurl.replace("&", "&amp;") + "</url>\n")
         sourcefile.write("</source></sources>\n")
         sourcefile.close()
+
+    def read_providers(self,providerfile):
+        # Check we have data
+        try:
+            if not os.path.getsize(providerfile):
+                raise Exception, "Providers file is empty"
+        except Exception, e:
+            raise (e)
+        myfile = open(providerfile, "r")
+        for line in myfile:
+            if line == "400: Invalid request\n":
+                print("Providers download is invalid please resolve or use URL based setup")
+                sys(exit(1))
+            PROVIDERS.append({'name': line.split(',')[0],
+                              'm3u': line.split(',')[1],
+                              'epg': line.split(',')[2],
+                              'delimiter_category': int(line.split(',')[3]),
+                              'delimiter_title': int(line.split(',')[4]),
+                              'delimiter_tvgid': int(line.split(',')[5]),
+                              'delimiter_logourl': int(line.split(',')[6])})
+        myfile.close()
 
     def process_provider(self, provider, username, password):
         supported_providers = ""
@@ -370,8 +372,10 @@ class IPTVSetup:
                     print("----Provider setup details----")
                     print("m3u = " + line['m3u'].replace("USERNAME", username).replace("PASSWORD", password))
                     print("epg = " + line['epg'].replace("USERNAME", username).replace("PASSWORD", password) + "\n")
-                return line['m3u'].replace("USERNAME", username).replace("PASSWORD", password), line['epg'].replace("USERNAME", username).replace("PASSWORD", password), line['delimiter_category'], line['delimiter_title'], line['delimiter_tvgid'], line['delimiter_logourl'] , supported_providers
-        # If we get here the supplied provider is invalid
+                return line['m3u'].replace("USERNAME", username).replace("PASSWORD", password), line['epg'].replace(
+                    "USERNAME", username).replace("PASSWORD", password), line['delimiter_category'], line[
+                           'delimiter_title'], line['delimiter_tvgid'], line['delimiter_logourl'], supported_providers
+        # If we get here the supplied provider is invalid 
         return "NOTFOUND", "", 0, 0, 0, 0, supported_providers
 
 def main(argv=None):  # IGNORE:C0111
@@ -401,23 +405,37 @@ USAGE
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
         # URL Based Setup
         urlgroup = parser.add_argument_group("URL Based Setup")
-        urlgroup.add_argument("-m", "--m3uurl", dest="m3uurl", action="store", help="URL to download m3u data from (required)")
-        urlgroup.add_argument("-e", "--epgurl" , dest="epgurl", action="store", help="URL source for XML TV epg data sources")
-        urlgroup.add_argument("-d1", "--delimiter_category" , dest="delimiter_category", action="store", help="Delimiter (\") count for category - default = 7")
-        urlgroup.add_argument("-d2", "--delimiter_title" , dest="delimiter_title", action="store", help="Delimiter (\") count for title - default = 8")
-        urlgroup.add_argument("-d3", "--delimiter_tvgid" , dest="delimiter_tvgid", action="store", help="Delimiter (\") count for tvg_id - default = 1")
-        urlgroup.add_argument("-d4", "--delimiter_logourl" , dest="delimiter_logourl", action="store", help="Delimiter (\") count for logourl - default = 5")
+        urlgroup.add_argument("-m", "--m3uurl", dest="m3uurl", action="store",
+                              help="URL to download m3u data from (required)")
+        urlgroup.add_argument("-e", "--epgurl", dest="epgurl", action="store",
+                              help="URL source for XML TV epg data sources")
+        urlgroup.add_argument("-d1", "--delimiter_category", dest="delimiter_category", action="store",
+                              help="Delimiter (\") count for category - default = 7")
+        urlgroup.add_argument("-d2", "--delimiter_title", dest="delimiter_title", action="store",
+                              help="Delimiter (\") count for title - default = 8")
+        urlgroup.add_argument("-d3", "--delimiter_tvgid", dest="delimiter_tvgid", action="store",
+                              help="Delimiter (\") count for tvg_id - default = 1")
+        urlgroup.add_argument("-d4", "--delimiter_logourl", dest="delimiter_logourl", action="store",
+                              help="Delimiter (\") count for logourl - default = 5")
         # Provider based setup
         providergroup = parser.add_argument_group("Provider Based Setup")
-        providergroup.add_argument("-n", "--providername", dest="providername", action="store", help="Host IPTV provider name (FAB/EPIC) (required)")
-        providergroup.add_argument("-u", "--username" , dest="username", action="store", help="Your IPTV username (required)")
-        providergroup.add_argument("-p", "--password" , dest="password", action="store", help="Your IPTV password (required)")
-        # Options
-        parser.add_argument("-i", "--iptvtypes", dest="iptvtypes", action="store_true", help="Treat all stream references as IPTV stream type. (required for some enigma boxes)")
-        parser.add_argument("-s", "--singlevod", dest="singlevod", action="store_true", help="Create single VOD bouquets rather multiple VOD bouquets")
-        parser.add_argument("-P", "--picons", dest="picons", action="store_true", help="Automatically download of Picons, this option will slow the execution")
-        parser.add_argument("-q", "--iconpath" , dest="iconpath", action="store", help="Option path to store picons, if not supplied defaults to /usr/share/enigma2/picon/")
-        parser.add_argument("-U", "--uninstall", dest="uninstall", action="store_true", help="Uninstall all changes made by this script")
+        providergroup.add_argument("-n", "--providername", dest="providername", action="store",
+                                   help="Host IPTV provider name (FAB/EPIC) (required)")
+        providergroup.add_argument("-u", "--username", dest="username", action="store",
+                                   help="Your IPTV username (required)")
+        providergroup.add_argument("-p", "--password", dest="password", action="store",
+                                   help="Your IPTV password (required)")
+        # Options 
+        parser.add_argument("-i", "--iptvtypes", dest="iptvtypes", action="store_true",
+                            help="Treat all stream references as IPTV stream type. (required for some enigma boxes)")
+        parser.add_argument("-s", "--singlevod", dest="singlevod", action="store_true",
+                            help="Create single VOD bouquets rather multiple VOD bouquets")
+        parser.add_argument("-P", "--picons", dest="picons", action="store_true",
+                            help="Automatically download of Picons, this option will slow the execution")
+        parser.add_argument("-q", "--iconpath", dest="iconpath", action="store",
+                            help="Option path to store picons, if not supplied defaults to /usr/share/enigma2/picon/")
+        parser.add_argument("-U", "--uninstall", dest="uninstall", action="store_true",
+                            help="Uninstall all changes made by this script")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
         # Process arguments
@@ -453,8 +471,9 @@ USAGE
             iconpath = PICONSPATH
         if provider is None:
             provider = "E2m3u2Bouquet"
-        # Check we have enough to proceed
-        if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)):
+        print(uninstall)
+        # Check we have enough to proceed 
+        if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)) and uninstall is False:
             print('Please ensure correct command line options as passed to the program, for help use --help"')
             # Work out how to print the usage string here
             sys.exit(1)
@@ -465,13 +484,13 @@ USAGE
 
     except Exception, e:
         if DEBUG or TESTRUN:
-            raise(e)
+            raise (e)
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help")
         return 2
 
-    # # Core program logic starts here
+    # # Core program logic starts here     
     e2m3uSetup = IPTVSetup()
     if uninstall:
         # Clean up any existing files
@@ -483,12 +502,15 @@ USAGE
     else:
         # Work out provider based setup if thats what we have
         if ((provider is not None) and (username is not None) or (password is not None)):
-            m3uurl, epgurl, delimiter_category, delimiter_title, delimiter_tvgid, delimiter_logourl , supported_providers = e2m3uSetup.process_provider(provider, username, password)
-            if m3uurl=="NOTFOUND":
+            providersfile = e2m3uSetup.download_providers(PROVIDERSURL)
+            e2m3uSetup.read_providers(providersfile)
+            m3uurl, epgurl, delimiter_category, delimiter_title, delimiter_tvgid, delimiter_logourl, supported_providers = e2m3uSetup.process_provider(
+                provider, username, password)
+            if m3uurl == "NOTFOUND":
                 print("----ERROR----")
-                print("Provider not found, supported providers = "+ supported_providers)
+                print("Provider not found, supported providers = " + supported_providers)
                 sys(exit(1))
-         # Clean up any existing files
+                # Clean up any existing files
         e2m3uSetup.uninstaller()
         # Download m3u
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
@@ -510,6 +532,7 @@ USAGE
         print("Select sources and enable the new IPTV sources (will be listed as {})".format(provider))
         print("Save the selected sources, press yellow button to start manual import")
         print("You can then set EPG-Importer to automatically import the EPG every day")
+
 
 if __name__ == "__main__":
     # if DEBUG:
