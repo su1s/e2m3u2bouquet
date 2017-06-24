@@ -1,5 +1,58 @@
 # Enigma2 IPTV m3u to bouquet
 
+```
+usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL] [-d1 DELIMITER_CATEGORY]
+                        [-d2 DELIMITER_TITLE] [-d3 DELIMITER_TVGID]
+                        [-d4 DELIMITER_LOGOURL] [-n PROVIDERNAME]
+                        [-u USERNAME] [-p PASSWORD] [-i] [-s] [-P]
+                        [-q ICONPATH] [-U] [-V]
+
+e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
+
+  Copyright 2017. All rights reserved.
+  Created on 2017-06-04.
+  Licensed under GNU GENERAL PUBLIC LICENSE version 3
+  Distributed on an "AS IS" basis without warranties
+  or conditions of any kind, either express or implied.
+
+USAGE
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i, --iptvtypes       Treat all stream references as IPTV stream type.
+                        (required for some enigma boxes)
+  -s, --singlevod       Create single VOD bouquets rather multiple VOD
+                        bouquets
+  -P, --picons          Automatically download of Picons, this option will
+                        slow the execution
+  -q ICONPATH, --iconpath ICONPATH
+                        Option path to store picons, if not supplied defaults
+                        to /usr/share/enigma2/picon/
+  -U, --uninstall       Uninstall all changes made by this script
+  -V, --version         show program's version number and exit
+
+URL Based Setup:
+  -m M3UURL, --m3uurl M3UURL
+                        URL to download m3u data from (required)
+  -e EPGURL, --epgurl EPGURL
+                        URL source for XML TV epg data sources
+  -d1 DELIMITER_CATEGORY, --delimiter_category DELIMITER_CATEGORY
+                        Delimiter (") count for category - default = 7
+  -d2 DELIMITER_TITLE, --delimiter_title DELIMITER_TITLE
+                        Delimiter (") count for title - default = 8
+  -d3 DELIMITER_TVGID, --delimiter_tvgid DELIMITER_TVGID
+                        Delimiter (") count for tvg_id - default = 1
+  -d4 DELIMITER_LOGOURL, --delimiter_logourl DELIMITER_LOGOURL
+                        Delimiter (") count for logourl - default = 5
+
+Provider Based Setup:
+  -n PROVIDERNAME, --providername PROVIDERNAME
+                        Host IPTV provider name (FAB/EPIC) (required)
+  -u USERNAME, --username USERNAME
+                        Your IPTV username (required)
+  -p PASSWORD, --password PASSWORD
+                        Your IPTV password (required)
+```
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information
 
 ## Change notes
