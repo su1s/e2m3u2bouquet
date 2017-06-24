@@ -238,8 +238,9 @@ class IPTVSetup:
         mappingfile = os.getcwd() + "/e2m3u2bouquet-sort-default.txt"
         nonvodcatgories = (cat for cat in listcategories if not cat.startswith('VOD'))
         with open(mappingfile, "w") as myfile:
-            myfile.write("# e2m3u2bouquet Custom bouquet mapping\n")
+            myfile.write("# e2m3u2bouquet Custom bouquet sorting\n")
             myfile.write("# enter each category on a new line in the order you wish\n")
+            myfile.write("# then rename this file to e2m3u2bouquet-sort-override.txt for custom sorting\n")
             for x in nonvodcatgories:
                 if x:
                     myfile.write(x + "\n")
