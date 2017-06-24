@@ -27,8 +27,8 @@ __date__ = '2017-06-04'
 __updated__ = '2017-06-24'
 
 
-DEBUG = 1
-TESTRUN = 1
+DEBUG = 0
+TESTRUN = 0
 
 ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
