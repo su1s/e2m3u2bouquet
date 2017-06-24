@@ -25,31 +25,14 @@ __version__ = 0.40
 __date__ = '2017-06-04'
 __updated__ = '2017-06-24'
 
-DEBUG = 1
-TESTRUN = 1
+DEBUG = 0
+TESTRUN = 0
 
 ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
 PICONSPATH = "/usr/share/enigma2/picon/"
 PROVIDERS = []
-PROVIDERSURL = "https://www.suls.co.uk/providers.txt"
-# FAB
-PROVIDERS.append({'name': "FAB",
-                  'm3u': "http://stream.fabiptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts",
-                  'epg': "http://stream.fabiptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD",
-                  'delimiter_category': 7,
-                  'delimiter_title': 8,
-                  'delimiter_tvgid': 1,
-                  'delimiter_logourl': 5})
-# EPIC
-PROVIDERS.append({'name': "EPIC",
-                  'm3u': "http://epicstream.tv:7000/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts",
-                  'epg': "http://149.56.14.45:1000/guide.xml",
-                  'delimiter_category': 7,
-                  'delimiter_title': 8,
-                  'delimiter_tvgid': 1,
-                  'delimiter_logourl': 5})
-
+PROVIDERSURL = "https://raw.githubusercontent.com/su1s/e2m3u2bouquet/providers.txt"
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -341,6 +324,27 @@ class IPTVSetup:
         sourcefile.write("</source></sources>\n")
         sourcefile.close()
 
+    def read_providers(self,providerfile):
+        # Check we have data
+        try:
+            if not os.path.getsize(providerfile):
+                raise Exception, "Providers file is empty"
+        except Exception, e:
+            raise (e)
+        myfile = open(providerfile, "r")
+        for line in myfile:
+            if line == "400: Invalid request\n":
+                print("Providers download is invalid please resolve or use URL based setup")
+                sys(exit(1))
+            PROVIDERS.append({'name': line.split(',')[0],
+                              'm3u': line.split(',')[1],
+                              'epg': line.split(',')[2],
+                              'delimiter_category': int(line.split(',')[3]),
+                              'delimiter_title': int(line.split(',')[4]),
+                              'delimiter_tvgid': int(line.split(',')[5]),
+                              'delimiter_logourl': int(line.split(',')[6])})
+        myfile.close()
+
     def process_provider(self, provider, username, password):
         supported_providers = ""
         for line in PROVIDERS:
@@ -482,7 +486,7 @@ USAGE
         # Work out provider based setup if thats what we have
         if ((provider is not None) and (username is not None) or (password is not None)):
             providersfile = e2m3uSetup.download_providers(PROVIDERSURL)
-
+            e2m3uSetup.read_providers(providersfile)
             m3uurl, epgurl, delimiter_category, delimiter_title, delimiter_tvgid, delimiter_logourl, supported_providers = e2m3uSetup.process_provider(
                 provider, username, password)
             if m3uurl == "NOTFOUND":
