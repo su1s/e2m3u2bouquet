@@ -14,6 +14,7 @@ import os, re, unicodedata
 import datetime
 import urllib
 import imghdr
+import tempfile
 from PIL import Image
 from collections import OrderedDict
 import glob
@@ -26,14 +27,14 @@ __date__ = '2017-06-04'
 __updated__ = '2017-06-24'
 
 
-DEBUG = 0
-TESTRUN = 0
+DEBUG = 1
+TESTRUN = 1
 
 ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
 PICONSPATH = "/usr/share/enigma2/picon/"
 PROVIDERS = []
-PROVIDERSURL = "https://raw.githubusercontent.com/su1s/e2m3u2bouquet/providers.txt"
+PROVIDERSURL = "https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/providers.txt"
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
