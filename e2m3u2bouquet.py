@@ -50,7 +50,7 @@ class CLIError(Exception):
 
 class IPTVSetup:
     def __init__(self):
-        # welcome message 
+        # welcome message
         print("\n********************************")
         print("Starting Engima2 IPTV bouquets")
         print(str(datetime.datetime.now()))
@@ -115,7 +115,7 @@ class IPTVSetup:
             raise (e)
         return filename
 
-    # core parsing routine 
+    # core parsing routine
     def parsem3u(self, filename, all_iptv_stream_types, singlevod, picons, delimiter_category, delimiter_title,
                  delimiter_tvgid, delimiter_logourl, iconpath):
         # Extract and generate the following items from the m3u
@@ -125,7 +125,7 @@ class IPTVSetup:
         # 3 logo url
         # 4 stream url
         # 5 stream type
-        # 6 service Ref 
+        # 6 service Ref
 
         print("\n----Parsing m3u file----")
         try:
@@ -137,7 +137,7 @@ class IPTVSetup:
         listchannels = []
         with open(filename, "r") as myfile:
             for line in myfile:
-                if 'EXTM3U' in line:  # First line we are not interested 
+                if 'EXTM3U' in line:  # First line we are not interested
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
                     channel = [line.split('"')[delimiter_category], (line.split('"')[delimiter_title])[1:].strip(),
@@ -201,7 +201,7 @@ class IPTVSetup:
                 # Download Picon if not VOD
                 if not x['category'].startswith('VOD'):
                     self.download_picon(x['logoUrl'], x['title'], iconpath)
-            print("Picons downloads completed...")
+            print("\nPicons download completed...")
             print("Box will need restarted for Picons to show...")
         return (listcategories, listchannels)
 
@@ -238,6 +238,10 @@ class IPTVSetup:
                 if DEBUG:
                     print("Picon file doesn't exist downloading")
                     print('PiconURL: ' + logourl)
+                else:
+                    # Output some kind of progress indicator
+                    sys.stdout.write('.')
+                    sys.stdout.flush()
                 try:
                     urllib.urlretrieve(logourl, piconfilepath)
                 except Exception, e:
@@ -376,7 +380,7 @@ class IPTVSetup:
                 return line['m3u'].replace("USERNAME", username).replace("PASSWORD", password), line['epg'].replace(
                     "USERNAME", username).replace("PASSWORD", password), line['delimiter_category'], line[
                            'delimiter_title'], line['delimiter_tvgid'], line['delimiter_logourl'], supported_providers
-        # If we get here the supplied provider is invalid 
+        # If we get here the supplied provider is invalid
         return "NOTFOUND", "", 0, 0, 0, 0, supported_providers
 
 def main(argv=None):  # IGNORE:C0111
@@ -426,7 +430,7 @@ USAGE
                                    help="Your IPTV username (required)")
         providergroup.add_argument("-p", "--password", dest="password", action="store",
                                    help="Your IPTV password (required)")
-        # Options 
+        # Options
         parser.add_argument("-i", "--iptvtypes", dest="iptvtypes", action="store_true",
                             help="Treat all stream references as IPTV stream type. (required for some enigma boxes)")
         parser.add_argument("-s", "--singlevod", dest="singlevod", action="store_true",
@@ -472,8 +476,7 @@ USAGE
             iconpath = PICONSPATH
         if provider is None:
             provider = "E2m3u2Bouquet"
-        print(uninstall)
-        # Check we have enough to proceed 
+        # Check we have enough to proceed
         if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)) and uninstall is False:
             print('Please ensure correct command line options as passed to the program, for help use --help"')
             # Work out how to print the usage string here
@@ -491,7 +494,7 @@ USAGE
         sys.stderr.write(indent + "  for help use --help")
         return 2
 
-    # # Core program logic starts here     
+    # # Core program logic starts here
     e2m3uSetup = IPTVSetup()
     if uninstall:
         # Clean up any existing files
@@ -511,7 +514,7 @@ USAGE
                 print("----ERROR----")
                 print("Provider not found, supported providers = " + supported_providers)
                 sys(exit(1))
-                # Clean up any existing files
+        # Clean up any existing files
         e2m3uSetup.uninstaller()
         # Download m3u
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
