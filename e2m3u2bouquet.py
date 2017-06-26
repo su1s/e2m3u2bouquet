@@ -161,28 +161,40 @@ class IPTVSetup:
             else:
                 x['streamType'] = "1"
 
-        # get category list (keep order from m3u file)
-        for x in listchannels:
+            # get category list
             if x['category'] not in listcategories:
                 listcategories.append(x['category'])
-        #sort categories by name
+
+        # sort categories by name
         listcategories.sort()
         self.save_bouquet_map(listcategories)
-        #sort categories by custom order (if exists)
+        # sort categories by custom order (if exists)
         sortedcategories = self.parse_bouquet_map()
         sortedcategories.extend(listcategories)
-        #remove duplicates, keep order
+        # remove duplicates, keep order
         listcategories = OrderedDict((x, True) for x in sortedcategories).keys()
 
-        #Sort the channels by category
+        # sort the channels by category
         category_order_dict = {category: index for index, category in enumerate(listcategories)}
         listchannels.sort(key=lambda x: category_order_dict[x['category']])
 
         # Add Service references
-        num = 1
-        for x in listchannels:
-            x['serviceRef'] = x['streamType'] + ":0:1:" + str(num) + ":0:0:0:0:0:0"
-            num += 1
+        # VOD doesn't have epg so use same service id
+        vod_service_id = 65535
+        serviceid_start = 34000
+        category_offset = 150
+        catstartnum = serviceid_start
+        for cat in listcategories:
+            num = catstartnum
+            for x in listchannels:
+                if (x['category'] == cat) and not (cat.startswith('VOD')):
+                    x['serviceRef'] = x['streamType'] + ":0:1:{:x}:0:0:0:0:0:0".format(num)
+                    num += 1
+                elif (x['category'] == cat) and (cat.startswith('VOD')):
+                    x['serviceRef'] = x['streamType'] + ":0:1:{:x}:0:0:0:0:0:0".format(vod_service_id)
+            while (catstartnum < num):
+                catstartnum += category_offset
+
         # Have a look at what we have
         if DEBUG and TESTRUN:
             datafile = open(EPGIMPORTPATH + "channels.debug", "w+")
