@@ -1,3 +1,4 @@
 FAB,http://stream.fabiptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://stream.fabiptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 EPIC,http://epicstream.tv:7000/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://149.56.14.45:1000/guide.xml,7,8,1,5
 ULTIMATESPORTS,http://iptv.madnlooney.co.uk:80/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://iptv.madnlooney.co.uk:80/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+ACE,http://ace-tv.xyz:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ace-tv.xyz:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
