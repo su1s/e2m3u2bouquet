@@ -16,15 +16,15 @@ import urllib
 import imghdr
 import tempfile
 from PIL import Image
-from collections import OrderedDict
+from collections import OrderedDict, deque
 import glob
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = 0.40
+__version__ = 0.41
 __date__ = '2017-06-04'
-__updated__ = '2017-06-24'
+__updated__ = '2017-06-28'
 
 
 DEBUG = 0
@@ -62,8 +62,8 @@ class IPTVSetup:
         try:
             # m3u file
             print("Removing old m3u files...")
-            if os.path.isfile(os.getcwd() + "/e2m3u2bouquet.m3u"):
-                os.remove(os.getcwd() + "/e2m3u2bouquet.m3u")
+            if os.path.isfile(os.path.join(os.getcwd(), 'e2m3u2bouquet.m3u')):
+                os.remove(os.path.join(os.getcwd(), 'e2m3u2bouquet.m3u'))
             # Bouquets
             print("Removing old IPTV bouquets...")
             for fname in os.listdir(ENIGMAPATH):
@@ -75,7 +75,7 @@ class IPTVSetup:
             print("Removing IPTV custom channels...")
             for fname in os.listdir(EPGIMPORTPATH):
                 if "suls_iptv_" in fname:
-                    os.remove(EPGIMPORTPATH + fname)
+                    os.remove(os.path.join(EPGIMPORTPATH, fname))
             # bouquets.tv
             print("Removing IPTV bouquets from bouquets.tv...")
             os.rename(ENIGMAPATH + "bouquets.tv", ENIGMAPATH + "bouquets.tv.bak")
@@ -95,7 +95,7 @@ class IPTVSetup:
         filename = os.path.join(os.getcwd(), 'e2m3u2bouquet.m3u')
         print("\n----Downloading m3u file----")
         if DEBUG:
-            print("m3uurl=" + url)
+            print("m3uurl = {}".format(url))
         try:
             urllib.urlretrieve(url, filename)
         except Exception, e:
@@ -108,7 +108,7 @@ class IPTVSetup:
         filename = os.path.join(path, 'providers.txt')
         print("\n----Downloading providers file----")
         if DEBUG:
-            print("providers url =" + url)
+            print("providers url = {}".format(url))
         try:
             urllib.urlretrieve(url, filename)
         except Exception, e:
@@ -152,7 +152,7 @@ class IPTVSetup:
         for x in listchannels:
             if x['streamUrl'].endswith(('.mp4', 'mkv', '.avi', "mpg")):
                 if not singlevod:
-                    x['category'] = "VOD - " + x['category']
+                    x['category'] = "VOD - {}".format(x['category'])
                 else:
                     x['category'] = "VOD"
                 x['streamType'] = "4097"
@@ -188,21 +188,29 @@ class IPTVSetup:
             num = catstartnum
             for x in listchannels:
                 if (x['category'] == cat) and not (cat.startswith('VOD')):
-                    x['serviceRef'] = x['streamType'] + ":0:1:{:x}:0:0:0:0:0:0".format(num)
+                    x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], num)
                     num += 1
                 elif (x['category'] == cat) and (cat.startswith('VOD')):
-                    x['serviceRef'] = x['streamType'] + ":0:1:{:x}:0:0:0:0:0:0".format(vod_service_id)
+                    x['serviceRef'] =  "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], vod_service_id)
             while (catstartnum < num):
                 catstartnum += category_offset
 
+        if (listcategories[0] == "VOD" and not singlevod):
+            # move the multi VOD categories to top of list
+            listcategories = deque(listcategories)
+            listcategories.popleft()
+            vodpos = next((i for i, s in enumerate(listcategories) if "VOD" in s),-1)
+            if vodpos <> -1:
+                listcategories.rotate(-vodpos)
+
         # Have a look at what we have
         if DEBUG and TESTRUN:
-            datafile = open(EPGIMPORTPATH + "channels.debug", "w+")
+            datafile = open(os.path.join(EPGIMPORTPATH, 'channels.debug'), "w+")
             for line in listchannels:
                 linevals = ""
                 for key, value in line.items():
                     linevals += value + ":"
-                datafile.write(linevals + "\n")
+                datafile.write("{}\n".format(linevals))
             datafile.close()
         print("Completed parsing data...")
 
@@ -219,7 +227,7 @@ class IPTVSetup:
 
     def parse_bouquet_map(self):
         category_order = []
-        mappingfile = os.getcwd() + "/e2m3u2bouquet-sort-override.txt"
+        mappingfile = os.path.join(os.getcwd(), 'e2m3u2bouquet-sort-override.txt')
         if os.path.isfile(mappingfile):
             with open (mappingfile, "r") as myfile:
                 for line in myfile:
@@ -228,7 +236,7 @@ class IPTVSetup:
         return category_order
 
     def save_bouquet_map(self, listcategories):
-        mappingfile = os.getcwd() + "/e2m3u2bouquet-sort-default.txt"
+        mappingfile = os.path.join(os.getcwd(), 'e2m3u2bouquet-sort-default.txt')
         nonvodcatgories = (cat for cat in listcategories if not cat.startswith('VOD'))
         with open(mappingfile, "w") as myfile:
             myfile.write("# e2m3u2bouquet Custom bouquet sorting\n")
@@ -236,7 +244,7 @@ class IPTVSetup:
             myfile.write("# then rename this file to e2m3u2bouquet-sort-override.txt for custom sorting\n")
             for x in nonvodcatgories:
                 if x:
-                    myfile.write(x + "\n")
+                    myfile.write("{}\n".format(x))
 
     def download_picon(self, logourl, title, iconpath):
         if logourl:
@@ -249,7 +257,7 @@ class IPTVSetup:
             if not existingpicon:
                 if DEBUG:
                     print("Picon file doesn't exist downloading")
-                    print('PiconURL: ' + logourl)
+                    print('PiconURL: {}'.format(logourl))
                 else:
                     # Output some kind of progress indicator
                     sys.stdout.write('.')
@@ -276,7 +284,7 @@ class IPTVSetup:
             if DEBUG:
                 print("Converting Picon to png")
             try:
-                Image.open(piconfilepath).save(piconfilepath + ".{}".format('png'))
+                Image.open(piconfilepath).save("{}.{}".format(piconfilepath, 'png'))
             except Exception, e:
                 if DEBUG:
                     print(e)
@@ -291,7 +299,7 @@ class IPTVSetup:
         else:
             # rename to correct extension
             try:
-                os.rename(piconfilepath, piconfilepath + ".{}".format(ext))
+                os.rename(piconfilepath, "{}.{}".format(piconfilepath, ext))
             except Exception, e:
                 if DEBUG:
                     print(e)
@@ -312,19 +320,24 @@ class IPTVSetup:
         for cat in listcategories:
             if any(x['category'] == cat for x in listchannels):
                 #create file
+                bouquetfilepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}.tv'
+                                    .format(cat.replace(" ", "_").replace("/", "_")))
                 if DEBUG:
-                    print("Creating: " + ENIGMAPATH + "userbouquet.suls_iptv_" + cat.replace(" ", "_").replace("/", "_") + ".tv")
-                bouquetfile = open(ENIGMAPATH + "userbouquet.suls_iptv_" + cat.replace(" ", "_").replace("/", "_") + ".tv", "w+")
-                bouquetfile.write("#NAME IPTV - " + cat + "\n")
+                    print("Creating: {}".format(bouquetfilepath))
+
+                bouquetfile = open(bouquetfilepath, "w+")
+                bouquetfile.write("#NAME IPTV - {}\n".format(cat))
                 for x in listchannels:
                     if x['category'] == cat:
-                        bouquetfile.write("#SERVICE " + x['serviceRef'] + ":" + x['streamUrl'].replace(":","%3a") + ":" + x['title'] + "\n")
-                        bouquetfile.write("#DESCRIPTION " + x['title'] + "\n")
+                        bouquetfile.write("#SERVICE {}:{}:{}\n"
+                            .format(x['serviceRef'], x['streamUrl'].replace(":","%3a"), x['title']))
+                        bouquetfile.write("#DESCRIPTION {}\n".format(x['title']))
                 bouquetfile.close()
 
                 # Add to main bouquets.tv file
                 tvfile = open(ENIGMAPATH + "bouquets.tv", "a")
-                tvfile.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_" + cat.replace(" ", "_").replace("/", "_") + ".tv\" ORDER BY bouquet\n")
+                tvfile.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_{}.tv\" ORDER BY bouquet\n"
+                    .format(cat.replace(" ", "_").replace("/", "_")))
                 tvfile.close()
         print("bouquets created ...")
 
@@ -338,24 +351,25 @@ class IPTVSetup:
         if DEBUG:
             print("creating EPGImporter config")
         # create channels file
-        channelfile = open(EPGIMPORTPATH + "suls_iptv_channels.channels.xml", "w+")
+        channelfile = open(os.path.join(EPGIMPORTPATH, "suls_iptv_channels.channels.xml"), "w+")
         nonvodcatgories = (cat for cat in listcategories if not cat.startswith('VOD'))
         channelfile.write("<channels>\n")
         for cat in nonvodcatgories:
             if any(x['category'] == cat for x in listchannels):
-                channelfile.write("<!-- " + cat.replace("&","&amp;") + " -->\n")
+                channelfile.write("<!-- {} -->\n".format(cat.replace("&","&amp;")))
                 for x in listchannels:
                     if x['category'] == cat:
-                        channelfile.write("<channel id=\"" + x['tvgId'].replace("&", "&amp;") + "\">" + x['serviceRef'] + ":http%3a//example.m3u8</channel> <!-- " + x['title'].replace("&", "&amp;") + " -->\n")
+                        channelfile.write("<channel id=\"{}\">{}:http%3a//example.m3u8</channel> <!-- {} -->\n"
+                            .format(x['tvgId'].replace("&", "&amp;"), x['serviceRef'], x['title'].replace("&", "&amp;")))
         channelfile.write("</channels>\n")
         channelfile.close()
 
         # create custom sources file
-        sourcefile = open(EPGIMPORTPATH + "suls_iptv_sources.sources.xml", "w+")
+        sourcefile = open(os.path.join(EPGIMPORTPATH, "suls_iptv_sources.sources.xml"), "w+")
         sourcefile.write(
             "<sources><source type=\"gen_xmltv\" channels=\"/etc/epgimport/suls_iptv_channels.channels.xml\">\n")
-        sourcefile.write("<description>" + provider.replace("&", "&amp;") + "</description>\n")
-        sourcefile.write("<url>" + epgurl.replace("&", "&amp;") + "</url>\n")
+        sourcefile.write("<description>{}</description>\n".format(provider.replace("&", "&amp;")))
+        sourcefile.write("<url>{}</url>\n".format(epgurl.replace("&", "&amp;")))
         sourcefile.write("</source></sources>\n")
         sourcefile.close()
 
