@@ -87,6 +87,12 @@ Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further informa
 
 ## Pre Requisites
 EPG-Importer plugin is required. This should be available in the plugin feed or already installed.
+N.B. OpenPLi may need additional packaes installed. If you attempt to run the script and get an error about
+missing modules please run
+```
+opkg update
+opkg install python-image python-imaging
+```
 
 ## How to install
 * FTP the e2m3u2bouquet.py to your engima2 box (i would suggest to /home/root)
