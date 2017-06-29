@@ -1,5 +1,6 @@
 # Enigma2 IPTV m3u to bouquet
 
+## Usage
 ```
 usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL] [-d1 DELIMITER_CATEGORY]
                         [-d2 DELIMITER_TITLE] [-d3 DELIMITER_TVGID]
@@ -83,3 +84,107 @@ Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further informa
 * Named provider support (= simplified command line)
 * Delimiter options for user defined parsing of the m3u file
 * Ability to chose own bouquet sort order
+
+## Pre Requisites
+EPG-Importer plugin is required. This should be available in the plugin feed or already installed.
+
+## How to install
+* FTP the e2m3u2bouquet.py to your engima2 box (i would suggest to /home/root)
+* SSH to your enigma2 box (using putty or something similar)
+* CD to the correct directory if you are not already there
+```
+cd /home/root
+```
+* Make script executable
+```
+chmod 755 e2m3u2bouquet.py
+```
+## Provider Based Setup
+```
+./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
+```
+Supported providers are currently
+FAB, EPIC, ULTIMATESPORTS, ACE, POSH
+
+## URL Based Setup
+Run the script passing the url for your m3u file and the url for your providers XML TV data feed (for FAB hosting the below works)
+```
+./e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
+```
+**NB: you need to replace the username and password values X 2**
+
+If you are with a different provider the script should work but you will obviously need the m3u url (1st parameter) and XML TV url (2nd parameter) for your own provider. Please note the m3u file needs to be the “extended” version if you have the option.
+
+## For Picon Support
+Add -P and optionally -q /path/to/picon/folder/ if you don’t store your picons in the default location
+```
+./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD -P
+```
+
+## To Reorder Bouquets
+Run the script once, it will create e2m3u2bouquet-sort-default.txt in the working directory, FTP this to your machine rename it to e2m3u2bouquet-sort-override.txt put the bouquets into the order you want and FTP it back to the box.
+
+Run the script again and your bouquet order will be as specified.
+
+## Specify all stream types to be IPTV
+Default is DVB stream types for live channels and IPTV for VOD, all IPTV type streams may be required if you are unable to record channels.
+```
+./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD -i
+```
+
+## Keep VOD all in a single bouquet
+./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD -s
+
+## Uninstall
+./e2m3u2bouquet.py -U
+
+## Help!
+```
+./e2m3u2bouquet.py --help
+```
+
+## Importing EPG Data
+* Open EPG-Importer plugin (download it if you haven’t already got it)
+* Select sources (Blue button on OpenVix)
+* Enable the source created by the script (e2m3u2bouquet / FAB / EPIC)
+* Kick off a manual EPG import
+
+## Updating Channels
+To update the channels simply run this script again. A scheduled script can 
+be set up to automate this process (see below)
+
+## Automate channel updates (set up from SSH)
+* If your box doesn't already have cron then install it
+```
+opkg install busybox-cron
+```
+* open crontab for editing
+```
+crontab -e
+```
+Once open press i to switch to INSERT mode enter the following (retype or ctrl-v to paste)
+This will automatically run the script at 06:00 & 18:00 every day
+```
+0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
+```
+or
+```
+0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
+```
+Press ESC follwed by :wq to exit the cron editor and save the entry
+You can check the entry with the command below
+```
+crontab -l
+```
+
+(Depending on your box image installing nano `opkg install nano` may set it as the default editor
+which makes editing the crontab easier)
+
+## Automate Channel Updates (set up from box GUI)
+* Go to 'Menu -> Timers -> CronTimers
+* Select the required update frequency
+* For the command to run enter i.e. to run at 06:00 & 18:00 enter
+```
+0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
+```
+* Ensure that cron Autostart is active
