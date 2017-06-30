@@ -22,7 +22,7 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = 0.41
+__version__ = '0.4.1'
 __date__ = '2017-06-04'
 __updated__ = '2017-06-28'
 
@@ -217,6 +217,8 @@ class IPTVSetup:
         if picons:
             print("\n----Downloading Picon files please be patient----")
             print("If no Picons exist this will take a few minutes")
+            if not os.path.isdir(iconpath):
+                os.makedirs(iconpath)
             for x in listchannels:
                 # Download Picon if not VOD
                 if not x['category'].startswith('VOD'):
