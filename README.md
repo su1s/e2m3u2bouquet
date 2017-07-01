@@ -1,5 +1,7 @@
 # Enigma2 IPTV m3u to bouquet
 
+Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2bouquet/releases)
+
 ## Usage
 ```
 usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL] [-d1 DELIMITER_CATEGORY]
@@ -54,8 +56,6 @@ Provider Based Setup:
   -p PASSWORD, --password PASSWORD
                         Your IPTV password (required)
 ```
-Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2bouquet/releases)
-
 
 ## Pre Requisites
 EPG-Importer plugin is required. This should be available in the plugin feed or already installed.
