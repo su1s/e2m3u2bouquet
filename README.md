@@ -200,5 +200,8 @@ which makes editing the crontab easier)
 * Named provider support (= simplified command line)
 * Delimiter options for user defined parsing of the m3u file
 * Ability to chose own bouquet sort order
+#### v0.4.1
+* Update service number to use numbers unlikely to be in use by existing sat services
+* Leave service number gaps between categories to reduce the effect of playlist additions cause the epg to get out of sync
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information
