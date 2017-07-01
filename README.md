@@ -54,36 +54,8 @@ Provider Based Setup:
   -p PASSWORD, --password PASSWORD
                         Your IPTV password (required)
 ```
-Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information
+Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2bouquet/releases)
 
-## Change notes
-#### v0.1
-* Initial version (Dave Sully)
-#### v0.2
-* Updated to use providers epg, doesn't need reboot to take effect - so could be scheduled from cron job (Doug MacKay)
-#### v0.3
-* Complete restructure of the code base to some thing more usable going forward, incorporated Dougs changes to EPG data source  (Dave Sully)
-* tvg-id now included in the channels
-* better parsing of m3u data (Doug MacKay)
-* downloads m3u file from url
-* sets custom source to providers xml tv feed (as per Dougs v0.2)
-* fixed IPTV streams not playing / having incorrect stream type
-* option to make all streams IPTV type
-* option to split VOD bouquets by initial category
-* all parameters arg based so in theory works for other providers and can be croned
-* auto reloads bouquets (Doug MacKay)
-* debug \ testrun modes
-#### v0.4
-* Restructure (again) of code base to bring in some of dougs better structures
-* m3u file parsing updated
-* channel ordering based on m3u file, bouquet ordering alphabetically or custom.
-* create single channels and sources list for EPG-Importer. Only one source now needs to be enabled in the EPG-Importer plugin
-* Add Picon download option (thanks to Jose Sanchez for initial code and idea)
-* Better args layout and processing
-* Mutli VOD by default
-* Named provider support (= simplified command line)
-* Delimiter options for user defined parsing of the m3u file
-* Ability to chose own bouquet sort order
 
 ## Pre Requisites
 EPG-Importer plugin is required. This should be available in the plugin feed or already installed.
@@ -123,7 +95,11 @@ Run the script passing the url for your m3u file and the url for your providers 
 If you are with a different provider the script should work but you will obviously need the m3u url (1st parameter) and XML TV url (2nd parameter) for your own provider. Please note the m3u file needs to be the “extended” version if you have the option.
 
 ## For Picon Support
-Add -P and optionally -q /path/to/picon/folder/ if you don’t store your picons in the default location
+Add -P and optionally -q /path/to/picon/folder/ if you don’t store your picons in the default location. The default location
+is `/usr/share/enigma2/picon/` (internal flash) other enigma2 picon search location are `/media/usb/picon/` & `/media/hdd/picon/`.
+
+N.B. If you store the picons on HDD it was spin up whenever they are shown
+
 ```
 ./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD -P
 ```
@@ -195,3 +171,34 @@ which makes editing the crontab easier)
 0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
 ```
 * Ensure that cron Autostart is active
+
+## Change notes
+#### v0.1
+* Initial version (Dave Sully)
+#### v0.2
+* Updated to use providers epg, doesn't need reboot to take effect - so could be scheduled from cron job (Doug MacKay)
+#### v0.3
+* Complete restructure of the code base to some thing more usable going forward, incorporated Dougs changes to EPG data source  (Dave Sully)
+* tvg-id now included in the channels
+* better parsing of m3u data (Doug MacKay)
+* downloads m3u file from url
+* sets custom source to providers xml tv feed (as per Dougs v0.2)
+* fixed IPTV streams not playing / having incorrect stream type
+* option to make all streams IPTV type
+* option to split VOD bouquets by initial category
+* all parameters arg based so in theory works for other providers and can be croned
+* auto reloads bouquets (Doug MacKay)
+* debug \ testrun modes
+#### v0.4
+* Restructure (again) of code base to bring in some of dougs better structures
+* m3u file parsing updated
+* channel ordering based on m3u file, bouquet ordering alphabetically or custom.
+* create single channels and sources list for EPG-Importer. Only one source now needs to be enabled in the EPG-Importer plugin
+* Add Picon download option (thanks to Jose Sanchez for initial code and idea)
+* Better args layout and processing
+* Mutli VOD by default
+* Named provider support (= simplified command line)
+* Delimiter options for user defined parsing of the m3u file
+* Ability to chose own bouquet sort order
+
+Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information
