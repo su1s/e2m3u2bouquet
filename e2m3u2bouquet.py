@@ -310,8 +310,9 @@ class IPTVSetup:
             f.write("{} e2m3u2bouquet Custom mapping file\n".format(indent))
             f.write("{} Rearrange bouquets or channels in the order you wish\n".format(indent))
             f.write("{} Disable bouquets or channels by setting enabled to 'false'\n".format(indent))
-            f.write("{} Map Satellite epg to IPTV by changing channel serviceId attribute to match sat service id (decimal)'\n".format(indent))
+            f.write("{} Map Satellite epg to IPTV by changing channel serviceId attribute to match sat service id (decimal)\n".format(indent))
             f.write("{} Map XML epg to different xml TVG-ID by changing channel id attribute\n".format(indent))
+            f.write("Rename this file as e2m3u2bouquet-sort-override.xml for the changes to apply\n")
             f.write("-->\n")
 
             f.write("<mapping>\n")
