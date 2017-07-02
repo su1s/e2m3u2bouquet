@@ -112,7 +112,7 @@ N.B. If you store the picons on HDD it was spin up whenever they are shown
 * For custom channel ordering within a bouquet move the `<channel` lines within `<mapping> -> <channels>`
 * To disable a channel change `enabled="true"` to `enabled="false"`
 * To change the id used for XML EPG mapping update the `id` attribute
-* To change the service id (e.g. to map to an existing satellite EPG feed change the `serviceId` attribute
+* To change the service id (e.g. to map to an existing satellite EPG feed) change the `serviceId` attribute
 * FTP `e2m3u2bouquet-sort-override.xml` to your box
 * Run the script again and the changes made will be applied
 
