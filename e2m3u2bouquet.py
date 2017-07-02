@@ -668,7 +668,7 @@ USAGE
         categoryorder, dictchannels = e2m3uSetup.parsem3u(m3ufile, iptvtypes, singlevod, delimiter_category, delimiter_title, delimiter_tvgid, delimiter_logourl)
         #download picons
         if picons:
-            self.download_picons(dictchannels, iconpath)
+            e2m3uSetup.download_picons(dictchannels, iconpath)
         # Create bouquet files
         e2m3uSetup.create_bouquets(categoryorder, dictchannels)
         # Now create custom channels for each bouquet
