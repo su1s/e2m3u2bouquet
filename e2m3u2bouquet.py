@@ -22,11 +22,7 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-<<<<<<< HEAD
 __version__ = '0.4.1'
-=======
-__version__ = 0.4.1
->>>>>>> master
 __date__ = '2017-06-04'
 __updated__ = '2017-06-28'
 
