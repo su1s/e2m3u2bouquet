@@ -238,6 +238,8 @@ class IPTVSetup:
         categoryorder = []
         mappingfile = os.path.join(os.getcwd(), 'e2m3u2bouquet-sort-override.xml')
         if os.path.isfile(mappingfile):
+            print("\n----Parsing custom bouquet order----")
+
             with open (mappingfile, "r") as f:
                 tree = ElementTree.parse(f)
             for node in tree.findall(".//category"):
@@ -255,6 +257,8 @@ class IPTVSetup:
                             dictchannels.pop(k, None)
                 else:
                     categoryorder.append(category)
+
+            print("custom bouquet order parsed...")
         return categoryorder
 
     def parse_map_channels_xml(self, dictchannels):
@@ -262,6 +266,8 @@ class IPTVSetup:
         """
         mappingfile = os.path.join(os.getcwd(), 'e2m3u2bouquet-sort-override.xml')
         if os.path.isfile(mappingfile):
+            print("\n----Parsing custom channel order, please be patient----")
+
             with open (mappingfile, "r") as f:
                 tree = ElementTree.parse(f)
             for cat in dictchannels:
@@ -291,6 +297,7 @@ class IPTVSetup:
                             serviceId = int(node.attrib.get('serviceId'))
                             x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], serviceId)
                             x['serviceId'] = serviceId
+            print("custom channel order parsed...")
 
     def xml_escape(self, string):
         return string.replace("&", "&amp;") \
@@ -346,7 +353,7 @@ class IPTVSetup:
             f.write("</mapping>")
 
     def download_picons(self, dictchannels, iconpath):
-        print("\n----Downloading Picon files please be patient----")
+        print("\n----Downloading Picon files, please be patient----")
         print("If no Picons exist this will take a few minutes")
         if not os.path.isdir(iconpath):
             os.makedirs(iconpath)
