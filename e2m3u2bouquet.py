@@ -25,7 +25,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.5'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-02'
+__updated__ = '2017-07-03'
 
 
 DEBUG = 0
@@ -177,12 +177,10 @@ class IPTVSetup:
             if cat in dictchannels:
                 if not cat.startswith("VOD"):
                      for x in dictchannels[cat]:
-                        x['serviceId'] = num
                         x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], num)
                         num += 1
                 else:
                     for x in dictchannels[cat]:
-                        x['serviceId'] = vod_service_id
                         x['serviceRef'] =  "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], vod_service_id)
             while (catstartnum < num):
                 catstartnum += category_offset
@@ -293,10 +291,10 @@ class IPTVSetup:
                         if node <> None:
                             if node.attrib.get('enabled') == 'false':
                                 x['enabled'] = False
-                            x['tvgId'] = node.attrib.get('id')
-                            serviceId = int(node.attrib.get('serviceId'))
-                            x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], serviceId)
-                            x['serviceId'] = serviceId
+                            # default to current values if attribute doesn't exist
+                            x['tvgId'] = node.attrib.get('id', x['tvgId'])
+                            x['serviceRef'] = node.attrib.get('serviceRef', x['serviceRef'])
+                            x['streamUrl'] = node.attrib.get('streamUrl', x['streamUrl'])
             print("custom channel order parsed...")
 
     def xml_escape(self, string):
@@ -317,7 +315,7 @@ class IPTVSetup:
             f.write("{} e2m3u2bouquet Custom mapping file\n".format(indent))
             f.write("{} Rearrange bouquets or channels in the order you wish\n".format(indent))
             f.write("{} Disable bouquets or channels by setting enabled to 'false'\n".format(indent))
-            f.write("{} Map Satellite epg to IPTV by changing channel serviceId attribute to match sat service id (decimal)\n".format(indent))
+            f.write("{} Map Satellite epg to IPTV by changing channel serviceRef attribute to match sat serviceRef\n".format(indent))
             f.write("{} Map XML epg to different xml TVG-ID by changing channel id attribute\n".format(indent))
             f.write("Rename this file as e2m3u2bouquet-sort-override.xml for the changes to apply\n")
             f.write("-->\n")
@@ -341,13 +339,15 @@ class IPTVSetup:
                     if not cat.startswith("VOD"):
                         f.write("{}<!-- {} -->\n".format(2 * indent, self.xml_escape(cat)))
                         for x in dictchannels[cat]:
-                            f.write("{}<channel name=\"{}\" id=\"{}\" serviceId=\"{}\" enabled=\"{}\" category=\"{}\" />\n"
+                            f.write("{}<channel name=\"{}\" id=\"{}\" enabled=\"{}\" category=\"{}\" serviceRef=\"{}\" streamUrl=\"{}\" />\n"
                                 .format(2 * indent,
                                         self.xml_escape(x['title']),
                                         self.xml_escape(x['tvgId']),
-                                        x['serviceId'],
                                         str(x['enabled']).lower(),
-                                        self.xml_escape(cat)))
+                                        self.xml_escape(cat),
+                                        self.xml_escape(x['serviceRef']),
+                                        self.xml_escape(x['streamUrl'])
+                                        ))
             f.write("{}</channels>\n".format(indent))
 
             f.write("</mapping>")
