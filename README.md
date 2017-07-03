@@ -64,7 +64,7 @@ N.B. OpenPLi may need additional packaes installed. If you attempt to run the sc
 missing modules please run
 ```
 opkg update
-opkg install python-image python-imaging
+opkg install python-image python-imaging python-argparse
 ```
 
 ## How to install
