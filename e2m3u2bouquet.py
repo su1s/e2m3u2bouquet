@@ -140,7 +140,7 @@ class IPTVSetup:
                 if 'EXTM3U' in line:  # First line we are not interested
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
-                    channel = [line.split('"')[delimiter_category], (line.split('"')[delimiter_title])[1:].strip(),
+                    channel = [line.split('"')[delimiter_category].replace(":","-").replace("|","-"), (line.split('"')[delimiter_title])[1:].strip().replace(":","-").replace("|","-"),
                                line.split('"')[delimiter_tvgid], line.split('"')[delimiter_logourl]]
                 elif 'http:' in line:
                     channel.append(line.strip())
