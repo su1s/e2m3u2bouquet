@@ -210,6 +210,8 @@ which makes editing the crontab easier)
 #### v0.4.1
 * Update service number to use numbers unlikely to be in use by existing sat services
 * Leave service number gaps between categories to reduce the effect of playlist additions cause the epg to get out of sync
+### v0.4.2
+* Fixed error for ACE and FLAWLESS users where “:” in category put the box into an infinite loop
 #### v0.5
 * Custom mapping. Ability to reorder bouquets, channels within bouquets, disable entire bouquet or individual channels,
 change serviceId (so that EPG from existing satelletite service can be used), change TVG-ID to match other xml epg feeds
