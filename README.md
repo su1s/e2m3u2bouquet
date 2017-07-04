@@ -94,7 +94,7 @@ Run the script passing the url for your m3u file and the url for your providers 
 
 If you are with a different provider the script should work but you will obviously need the m3u url (1st parameter) and XML TV url (2nd parameter) for your own provider. Please note the m3u file needs to be the “extended” version if you have the option.
 
-## For Picon Support
+## For Picon Download Support
 Add -P and optionally -q /path/to/picon/folder/ if you don’t store your picons in the default location. The default location
 is `/usr/share/enigma2/picon/` (internal flash) other enigma2 picon search location are `/media/usb/picon/` & `/media/hdd/picon/`.
 
