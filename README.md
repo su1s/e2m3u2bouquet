@@ -176,6 +176,7 @@ which makes editing the crontab easier)
 * To disable a channel change `enabled="true"` to `enabled="false"`
 * To change the id used for XML EPG mapping update the `id` attribute
 * To change the service ref (e.g. to map to an existing satellite EPG feed) change the `serviceRef` attribute
+  * For example to use the Channel 4 HD DVB-S EPG you would set the serviceRef to "1:0:1:**52D0:814:2:11A0000**:0:0:0" (part in bold SID:TID:NID:Namespace needs to match). If you match a DVB service and also set the streamUrl to blank the DVB service will replace the IPTV service
 * FTP `e2m3u2bouquet-sort-override.xml` to your box
 * Run the script again and the changes made will be applied
 
