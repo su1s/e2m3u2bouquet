@@ -175,7 +175,7 @@ which makes editing the crontab easier)
 * For custom channel ordering within a bouquet move the `<channel` lines within `<mapping> -> <channels>`
 * To disable a channel change `enabled="true"` to `enabled="false"`
 * To change the id used for XML EPG mapping update the `id` attribute
-* To change the service id (e.g. to map to an existing satellite EPG feed) change the `serviceId` attribute
+* To change the service ref (e.g. to map to an existing satellite EPG feed) change the `serviceRef` attribute
 * FTP `e2m3u2bouquet-sort-override.xml` to your box
 * Run the script again and the changes made will be applied
 
@@ -210,10 +210,10 @@ which makes editing the crontab easier)
 #### v0.4.1
 * Update service number to use numbers unlikely to be in use by existing sat services
 * Leave service number gaps between categories to reduce the effect of playlist additions cause the epg to get out of sync
-### v0.4.2
+#### v0.4.2
 * Fixed error for ACE and FLAWLESS users where “:” in category put the box into an infinite loop
 #### v0.5
 * Custom mapping. Ability to reorder bouquets, channels within bouquets, disable entire bouquet or individual channels,
-change serviceId (so that EPG from existing satelletite service can be used), change TVG-ID to match other xml epg feeds
+change serviceRef (so that EPG from existing satelletite service can be used), change TVG-ID to match other xml epg feeds
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
