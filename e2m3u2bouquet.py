@@ -25,7 +25,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.5'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-03'
+__updated__ = '2017-07-04'
 
 
 DEBUG = 0
@@ -292,7 +292,7 @@ class IPTVSetup:
                             if node.attrib.get('enabled') == 'false':
                                 x['enabled'] = False
                             # default to current values if attribute doesn't exist
-                            x['tvgId'] = node.attrib.get('id', x['tvgId'])
+                            x['tvgId'] = node.attrib.get('tvg-id', x['tvgId'])
                             x['serviceRef'] = node.attrib.get('serviceRef', x['serviceRef'])
                             x['streamUrl'] = node.attrib.get('streamUrl', x['streamUrl'])
             print("custom channel order parsed...")
