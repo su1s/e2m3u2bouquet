@@ -104,11 +104,6 @@ N.B. If you store the picons on HDD it was spin up whenever they are shown
 ./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD -P
 ```
 
-## To Reorder Bouquets
-Run the script once, it will create e2m3u2bouquet-sort-default.txt in the working directory, FTP this to your machine rename it to e2m3u2bouquet-sort-override.txt put the bouquets into the order you want and FTP it back to the box.
-
-Run the script again and your bouquet order will be as specified.
-
 ## Specify all stream types to be IPTV
 Default is DVB stream types for live channels and IPTV for VOD, all IPTV type streams may be required if you are unable to record channels.
 ```
@@ -172,6 +167,18 @@ which makes editing the crontab easier)
 ```
 * Ensure that cron Autostart is active
 
+## Custom Mapping
+* Run the script once. It will create `e2m3u2bouquet-sort-current.xml`
+* FTP `e2m3u2bouquet-sort-current.xml` to your machine and rename it `e2m3u2bouquet-sort-override.xml`
+* For custom bouquet order move the `<category` lines within `<mapping> -> <categories>`
+* To disable a bouquet change `enabled="true"` to `enabled="false"`
+* For custom channel ordering within a bouquet move the `<channel` lines within `<mapping> -> <channels>`
+* To disable a channel change `enabled="true"` to `enabled="false"`
+* To change the id used for XML EPG mapping update the `id` attribute
+* To change the service ref (e.g. to map to an existing satellite EPG feed) change the `serviceRef` attribute
+* FTP `e2m3u2bouquet-sort-override.xml` to your box
+* Run the script again and the changes made will be applied
+
 ## Change notes
 #### v0.1
 * Initial version (Dave Sully)
@@ -203,5 +210,10 @@ which makes editing the crontab easier)
 #### v0.4.1
 * Update service number to use numbers unlikely to be in use by existing sat services
 * Leave service number gaps between categories to reduce the effect of playlist additions cause the epg to get out of sync
+#### v0.4.2
+* Fixed error for ACE and FLAWLESS users where “:” in category put the box into an infinite loop
+#### v0.5
+* Custom mapping. Ability to reorder bouquets, channels within bouquets, disable entire bouquet or individual channels,
+change serviceRef (so that EPG from existing satelletite service can be used), change TVG-ID to match other xml epg feeds
 
-Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information
+Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
