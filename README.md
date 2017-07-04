@@ -213,7 +213,11 @@ which makes editing the crontab easier)
 #### v0.4.2
 * Fixed error for ACE and FLAWLESS users where “:” in category put the box into an infinite loop
 #### v0.5
-* Custom mapping. Ability to reorder bouquets, channels within bouquets, disable entire bouquet or individual channels,
-change serviceRef (so that EPG from existing satelletite service can be used), change TVG-ID to match other xml epg feeds
+* Custom mapping feature
+  * Reorder bouquets
+  * Reorder channels within bouquets
+  * Disable entire bouquet or individual channels
+  * Change serviceRef (so that EPG from existing satelletite service can be used)
+  * Change tvg-id to match other xml epg feeds
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
