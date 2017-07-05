@@ -339,7 +339,7 @@ class IPTVSetup:
                     if not cat.startswith("VOD"):
                         f.write("{}<!-- {} -->\n".format(2 * indent, self.xml_escape(cat)))
                         for x in dictchannels[cat]:
-                            f.write("{}<channel name=\"{}\" id=\"{}\" enabled=\"{}\" category=\"{}\" serviceRef=\"{}\" streamUrl=\"{}\" />\n"
+                            f.write("{}<channel name=\"{}\" tvg-id=\"{}\" enabled=\"{}\" category=\"{}\" serviceRef=\"{}\" streamUrl=\"{}\" />\n"
                                 .format(2 * indent,
                                         self.xml_escape(x['title']),
                                         self.xml_escape(x['tvgId']),
