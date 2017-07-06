@@ -5,3 +5,4 @@ ACE,http://ace-tv.xyz:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u
 POSH,http://poshiptv.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://poshiptv.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 FLAWLESS,http://flawless-iptv.net:4545/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=mpegts,http://flawless-iptv.net:4545/xmltv.php?username=USERNAME&password=PASSWORD,7,3,1,5
 VSTREAMS,http://vstreams.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://vstreams.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+ROOT,http://root-iptv.is-found.org:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=m3u8,http://root-iptv.is-found.org:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
