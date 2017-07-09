@@ -24,8 +24,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -i, --iptvtypes       Treat all stream references as IPTV stream type.
                         (required for some enigma boxes)
-  -s, --singlevod       Create single VOD bouquets rather multiple VOD
-                        bouquets
+  -M, --multivod        Create multiple VOD bouquets rather than single VOD
+                        bouquet
   -P, --picons          Automatically download of Picons, this option will
                         slow the execution
   -q ICONPATH, --iconpath ICONPATH
