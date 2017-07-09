@@ -354,7 +354,7 @@ class IPTVSetup:
                 f.write("{}<url>{}</url>\r".format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecxmltv-UK.gz'))
                 f.write("{}<url>{}</url>\r".format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecxmltv-UK.gz'))
                 f.write("{}<url>{}</url>\r".format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz'))
-                f.write("{}</group>>\r".format(2 * indent))
+                f.write("{}</group>\r".format(2 * indent))
                 # de
                 f.write("{}<group id=\"{}\">\r".format(2 * indent, 'de'))
                 f.write("{}<url>{}</url>\r".format(3 * indent, 'http://www.xmltvepg.nl/rytecxmltvGermany.gz'))
@@ -362,7 +362,7 @@ class IPTVSetup:
                 f.write("{}<url>{}</url>\r".format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecxmltvGermany.gz'))
                 f.write("{}<url>{}</url>\r".format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecxmltvGermany.gz'))
                 f.write("{}<url>{}</url>\r".format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecxmltvGermany.gz'))
-                f.write("{}</group>>\r".format(2 * indent))
+                f.write("{}</group>\r".format(2 * indent))
                 f.write("{}-->\r".format(2 * indent))
             else:
                 for group in list_xmltv_sources:
