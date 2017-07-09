@@ -483,7 +483,10 @@ class IPTVSetup:
     def get_picon_name(self, serviceName):
         """Convert the service name to a Picon Service Name
         """
-        name = unicodedata.normalize('NFKD', unicode(serviceName, 'utf_8')).encode('ASCII', 'ignore')
+        name = serviceName
+        if type(name) is unicode:
+            name = name.encode('utf-8')
+        name = unicodedata.normalize('NFKD', unicode(name, 'utf_8')).encode('ASCII', 'ignore')
         exclude_chars = ['/', '\\', '\'', '"', '`', '?', ' ', '(', ')', ':', '<', '>', '|', '.', '\n', '!']
         name = re.sub('[%s]' % ''.join(exclude_chars), '', name)
         name = name.replace('&', 'and')
