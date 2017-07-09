@@ -218,7 +218,10 @@ which makes editing the crontab easier)
   * Reorder bouquets
   * Reorder channels within bouquets
   * Disable entire bouquet or individual channels
-  * Change serviceRef (so that EPG from existing satelletite service can be used)
+  * Ability to change service reference (so that EPG from existing satelletite service can be used)  
   * Change tvg-id to match other xml epg feeds
+  * Support unicode characters in playlist
+  * Xml override file can set-up EPG-Importer config for different xmltv feeds
+  * Single VOD bouquet now default (use -M for multiple VOD bouquets)
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
