@@ -141,9 +141,10 @@ class IPTVSetup:
                 if 'EXTM3U' in line:  # First line we are not interested
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
-                    channel = [(line.split('"')[delimiter_category]),
-                               ((line.split('"')[delimiter_title])[1:]).strip(),
-                               (line.split('"')[delimiter_tvgid]), line.split('"')[delimiter_logourl]]
+                    channel = [(line.split('"')[delimiter_category]).strip(),
+                               (line.split('"')[delimiter_title]).lstrip(',').strip(),
+                               (line.split('"')[delimiter_tvgid]).strip(),
+                               line.split('"')[delimiter_logourl].strip()]
                 elif 'http:' in line:
                     channel.append(line.strip())
                     channeldict = {'category': channel[0].decode('utf-8'), 'title': channel[1].decode('utf-8'),
@@ -227,8 +228,7 @@ class IPTVSetup:
         return (category_order, dictchannels)
 
     def set_streamtypes_vodcats(self, channeldict, all_iptv_stream_types):
-        """Set the stream types and
-        clean up VOD to single or multi bouquets
+        """Set the stream types and VOD categories
         """
         if channeldict['streamUrl'].endswith(('.mp4', 'mkv', '.avi', "mpg")):
             channeldict['category'] = u"VOD - {}".format(channeldict['category'])
