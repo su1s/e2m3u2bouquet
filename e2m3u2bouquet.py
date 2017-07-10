@@ -25,7 +25,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.5'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-09'
+__updated__ = '2017-07-10'
 
 
 DEBUG = 0
@@ -509,12 +509,42 @@ class IPTVSetup:
         name = name.lower()
         return name
 
+    def create_all_channels_bouquet(self, category_order, dictchannels):
+        """Create the Enigma2 all channels bouquet
+        """
+        print("\n----Creating all channels bouquet----")
+
+        vod_categories = list((cat for cat in category_order if cat.startswith('VOD -')))
+        bouquet_name = "All Channels"
+        cat_filename = self.get_safe_filename(bouquet_name)
+
+        # create file
+        bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}.tv'
+                                        .format(cat_filename))
+        if DEBUG:
+            print("Creating: {}".format(bouquet_filepath))
+
+        with open(bouquet_filepath, "w+") as f:
+            f.write("#NAME IPTV - {}\n".format(bouquet_name.encode("utf-8")))
+            for cat in category_order:
+                if cat in dictchannels:
+                    if cat not in vod_categories:
+                        # Insert group description placeholder in bouquet
+                        f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0:\n")
+                        f.write("#DESCRIPTION {}\n".format(cat))
+                        for x in dictchannels[cat]:
+                            if x['enabled']:
+                                self.save_bouquet_entry(f, x)
+        # Add to main bouquets.tv file
+        self.save_bouquet_index_entry(cat_filename)
+        print("all channels bouquet created ...")
+
     def create_bouquets(self, category_order, dictchannels, multivod):
         """Create the Enigma2 bouquets
         """
         print("\n----Creating bouquets----")
 
-        vodcategories = list((cat for cat in category_order if cat.startswith('VOD -')))
+        vod_categories = list((cat for cat in category_order if cat.startswith('VOD -')))
         vod_category_output = False
         vod_bouquet_entry_output = False
 
@@ -523,48 +553,54 @@ class IPTVSetup:
                 # create file
                 cat_filename = self.get_safe_filename(cat)
 
-                if cat in vodcategories and not multivod:
+                if cat in vod_categories and not multivod:
                     cat_filename = "VOD"
 
-                bouquetfilepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}.tv'
+                bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}.tv'
                                                .format(cat_filename))
                 if DEBUG:
-                    print("Creating: {}".format(bouquetfilepath))
+                    print("Creating: {}".format(bouquet_filepath))
 
-                if cat not in vodcategories or multivod:
-                    with open(bouquetfilepath, "w+") as f:
+                if cat not in vod_categories or multivod:
+                    with open(bouquet_filepath, "w+") as f:
                         f.write("#NAME IPTV - {}\n".format(cat.encode("utf-8")))
                         for x in dictchannels[cat]:
                             if x['enabled']:
-                                f.write("#SERVICE {}:{}:{}\n"
-                                        .format(x['serviceRef'], x['streamUrl']
-                                                .replace(":", "%3a"), x['title'].encode("utf-8")))
-                                f.write("#DESCRIPTION {}\n".format(x['title'].encode("utf-8")))
+                                self.save_bouquet_entry(f, x)
                 elif not vod_category_output and not multivod:
                     # not multivod - output all the vod services in one file
-                    with open(bouquetfilepath, "w+") as f:
+                    with open(bouquet_filepath, "w+") as f:
                         f.write("#NAME IPTV - {}\n".format("VOD"))
-                        for vodcat in vodcategories:
+                        for vodcat in vod_categories:
                             if vodcat in dictchannels:
                                 # Insert group description placeholder in bouquet
                                 f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0:\n")
                                 f.write("#DESCRIPTION {}\n". format(vodcat))
                                 for x in dictchannels[vodcat]:
-                                    f.write("#SERVICE {}:{}:{}\n"
-                                            .format(x['serviceRef'], x['streamUrl']
-                                                    .replace(":", "%3a"), x['title'].encode("utf-8")))
-                                    f.write("#DESCRIPTION {}\n".format(x['title'].encode("utf-8")))
+                                    self.save_bouquet_entry(f, x)
                         vod_category_output = True
 
                 # Add to main bouquets.tv file
-                if cat not in vodcategories or (cat in vodcategories and not vod_bouquet_entry_output):
-                    with open(ENIGMAPATH + "bouquets.tv", "a") as f:
-                        f.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_{}.tv\" ORDER BY bouquet\n"
-                                .format(cat_filename))
-                        if cat in vodcategories and not multivod:
-                            vod_bouquet_entry_output = True
-
+                if cat not in vod_categories or (cat in vod_categories and not vod_bouquet_entry_output):
+                    self.save_bouquet_index_entry(cat_filename)
+                    if cat in vod_categories and not multivod:
+                        vod_bouquet_entry_output = True
         print("bouquets created ...")
+
+    def save_bouquet_entry(self, f, channel):
+        """Add service to bouquet file
+        """
+        f.write("#SERVICE {}:{}:{}\n"
+                .format(channel['serviceRef'], channel['streamUrl']
+                        .replace(":", "%3a"), channel['title'].encode("utf-8")))
+        f.write("#DESCRIPTION {}\n".format(channel['title'].encode("utf-8")))
+
+    def save_bouquet_index_entry(self, filename):
+        """Add to the main bouquets.tv file
+        """
+        with open(ENIGMAPATH + "bouquets.tv", "a") as f:
+            f.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_{}.tv\" ORDER BY bouquet\n"
+                    .format(filename))
 
     def reload_bouquets(self):
         if not TESTRUN:
@@ -720,7 +756,9 @@ USAGE
         parser.add_argument("-i", "--iptvtypes", dest="iptvtypes", action="store_true",
                             help="Treat all stream references as IPTV stream type. (required for some enigma boxes)")
         parser.add_argument("-M", "--multivod", dest="multivod", action="store_true",
-                            help="Create single VOD bouquets rather multiple VOD bouquets")
+                            help="Create multiple VOD bouquets rather single VOD bouquet")
+        parser.add_argument("-a", "--allbouquet", dest="allbouquet", action="store_true",
+                            help="Create all channels bouquet")
         parser.add_argument("-P", "--picons", dest="picons", action="store_true",
                             help="Automatically download of Picons, this option will slow the execution")
         parser.add_argument("-q", "--iconpath", dest="iconpath", action="store",
@@ -736,6 +774,7 @@ USAGE
         iptvtypes = args.iptvtypes
         uninstall = args.uninstall
         multivod = args.multivod
+        allbouquet = args.allbouquet
         picons = args.picons
         iconpath = args.iconpath
         provider = args.providername
@@ -812,6 +851,8 @@ USAGE
         if picons:
             e2m3uSetup.download_picons(dictchannels, iconpath)
         # Create bouquet files
+        if allbouquet:
+            e2m3uSetup.create_all_channels_bouquet(categoryorder, dictchannels)
         e2m3uSetup.create_bouquets(categoryorder, dictchannels, multivod)
         # Now create custom channels for each bouquet
         print("\n----Creating EPG-Importer config ----")
