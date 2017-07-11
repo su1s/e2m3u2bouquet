@@ -7,7 +7,7 @@ Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2b
 usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL] [-d1 DELIMITER_CATEGORY]
                         [-d2 DELIMITER_TITLE] [-d3 DELIMITER_TVGID]
                         [-d4 DELIMITER_LOGOURL] [-n PROVIDERNAME]
-                        [-u USERNAME] [-p PASSWORD] [-i] [-s] [-P]
+                        [-u USERNAME] [-p PASSWORD] [-i] [-M] [-a] [-P]
                         [-q ICONPATH] [-U] [-V]
 
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
