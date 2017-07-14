@@ -23,9 +23,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.5'
+__version__ = '0.5.1'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-10'
+__updated__ = '2017-07-14'
 
 
 DEBUG = 0
@@ -97,7 +97,7 @@ class IPTVSetup:
         try:
             urllib.urlretrieve(url, filename)
         except Exception, e:
-            raise (e)
+            raise e
         return filename
 
     def download_providers(self, url):
@@ -163,10 +163,10 @@ class IPTVSetup:
         category_order = dictchannels.keys()
 
         # sort categories by custom order (if exists)
-        sortedcategories = self.parse_map_bouquet_xml(dictchannels)
-        sortedcategories.extend(category_order)
+        sorted_categories, disabled_categories = self.parse_map_bouquet_xml(dictchannels)
+        sorted_categories.extend(category_order)
         # remove duplicates, keep order
-        category_order = OrderedDict((x, True) for x in sortedcategories).keys()
+        category_order = OrderedDict((x, True) for x in sorted_categories).keys()
 
         # Add Service references
         # VOD won't have epg so use same service id for all VOD
@@ -225,7 +225,7 @@ class IPTVSetup:
             if os.path.isfile(filename):
                 os.remove(filename)
 
-        return (category_order, dictchannels)
+        return category_order, disabled_categories, dictchannels
 
     def set_streamtypes_vodcats(self, channeldict, all_iptv_stream_types):
         """Set the stream types and VOD categories
@@ -241,12 +241,13 @@ class IPTVSetup:
     def parse_map_bouquet_xml(self, dictchannels):
         """Check for a mapping override file and parses it if found
         """
-        categoryorder = []
-        mappingfile = os.path.join(os.getcwd(), 'e2m3u2bouquet-sort-override.xml')
-        if os.path.isfile(mappingfile):
+        category_order = []
+        disabled_categories = []
+        mapping_file = os.path.join(os.getcwd(), 'e2m3u2bouquet-sort-override.xml')
+        if os.path.isfile(mapping_file):
             print("\n----Parsing custom bouquet order----")
 
-            with open (mappingfile, "r") as f:
+            with open(mapping_file, "r") as f:
                 tree = ElementTree.parse(f)
             for node in tree.findall(".//category"):
                 category = node.attrib.get('name')
@@ -255,19 +256,23 @@ class IPTVSetup:
                 if node.attrib.get('enabled') == 'false':
                     # Remove category/bouquet
                     if category != "VOD":
-                        dictchannels.pop(category, None)
+                        if category in dictchannels:
+                            disabled_categories.append(category)
+                            dictchannels.pop(category, None)
                     else:
                         keystoremove = []
                         for k in dictchannels.iterkeys():
                             if k.startswith("VOD"):
                                 keystoremove.append(k)
-                        for k in keystoremove:
-                            dictchannels.pop(k, None)
+                        if keystoremove:
+                            disabled_categories.append(category)
+                            for k in keystoremove:
+                                dictchannels.pop(k, None)
                 else:
-                    categoryorder.append(category)
+                    category_order.append(category)
 
             print("custom bouquet order parsed...")
-        return categoryorder
+        return category_order, disabled_categories
 
     def parse_map_xmltvsources_xml(self):
         """Check for a mapping override file and parses it if found
@@ -316,92 +321,101 @@ class IPTVSetup:
 
                     for x in dictchannels[cat]:
                         node = tree.find(u".//channel[@name=\"{}\"]".format(x['title']))
-                        if node <> None:
+                        if node is not None:
                             if node.attrib.get('enabled') == 'false':
                                 x['enabled'] = False
                             # default to current values if attribute doesn't exist
                             x['tvgId'] = node.attrib.get('tvg-id', x['tvgId'])
                             x['serviceRef'] = node.attrib.get('serviceRef', x['serviceRef'])
+                            # streamUrl no longer output to xml file but we still check and process it
                             x['streamUrl'] = node.attrib.get('streamUrl', x['streamUrl'])
+                            clear_stream_url = node.attrib.get('clearStreamUrl') == 'true'
+                            if clear_stream_url:
+                                x['streamUrl'] = ""
+
             print("custom channel order parsed...")
 
-    def save_map_channels_xml(self, categoryorder, dictchannels, list_xmltv_sources):
+    def save_map_channels_xml(self, categoryorder, disabled_categories, dictchannels, list_xmltv_sources):
         """Create mapping file"""
         mappingfile = os.path.join(os.getcwd(), 'e2m3u2bouquet-sort-current.xml')
         indent = "  "
         vod_category_output = False
 
-        with open(mappingfile, "w") as f:
-            f.write("<!--\r")
-            f.write("{} e2m3u2bouquet Custom mapping file\r".format(indent))
-            f.write("{} Rearrange bouquets or channels in the order you wish\r".format(indent))
-            f.write("{} Disable bouquets or channels by setting enabled to 'false'\r".format(indent))
-            f.write("{} Map Satellite epg to IPTV by changing channel serviceRef attribute to match sat serviceRef\r".format(indent))
-            f.write("{} Map XML epg to different xml TVG-ID by changing channel id attribute\r".format(indent))
-            f.write("Rename this file as e2m3u2bouquet-sort-override.xml for the changes to apply\r")
-            f.write("-->\r")
+        with open(mappingfile, "wb") as f:
+            f.write("<!--\r\n")
+            f.write("{} e2m3u2bouquet Custom mapping file\r\n".format(indent))
+            f.write("{} Rearrange bouquets or channels in the order you wish\r\n".format(indent))
+            f.write("{} Disable bouquets or channels by setting enabled to 'false'\r\n".format(indent))
+            f.write("{} Map DVB EPG to IPTV by changing channel serviceRef attribute to match DVB service reference\r\n".format(indent))
+            f.write("{} Map XML EPG to different feed by changing channel tvg-id attribute\r\n".format(indent))
+            f.write("{} Rename this file as e2m3u2bouquet-sort-override.xml for changes to apply\r\n".format((indent)))
+            f.write("-->\r\n")
 
-            f.write("<mapping>\r")
+            f.write("<mapping>\r\n")
 
-            f.write("{}<xmltvextrasources>\r".format(indent))
+            f.write("{}<xmltvextrasources>\r\n".format(indent))
             if not list_xmltv_sources:
                 # output example config
-                f.write("{}<!-- Example Config\r".format((2 * indent)))
+                f.write("{}<!-- Example Config\r\n".format((2 * indent)))
                 # uk
-                f.write("{}<group id=\"{}\">\r".format(2 * indent, 'uk'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://www.xmltvepg.nl/rytecxmltv-UK.gz'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://rytecepg.ipservers.eu/epg_data/rytecxmltv-UK.gz'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecxmltv-UK.gz'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecxmltv-UK.gz'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz'))
-                f.write("{}</group>\r".format(2 * indent))
+                f.write("{}<group id=\"{}\">\r\n".format(2 * indent, 'uk'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://www.xmltvepg.nl/rytecxmltv-UK.gz'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://rytecepg.ipservers.eu/epg_data/rytecxmltv-UK.gz'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecxmltv-UK.gz'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecxmltv-UK.gz'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz'))
+                f.write("{}</group>\r\n".format(2 * indent))
                 # de
-                f.write("{}<group id=\"{}\">\r".format(2 * indent, 'de'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://www.xmltvepg.nl/rytecxmltvGermany.gz'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://rytecepg.ipservers.eu/epg_data/rytecxmltvGermany.gz'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecxmltvGermany.gz'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecxmltvGermany.gz'))
-                f.write("{}<url>{}</url>\r".format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecxmltvGermany.gz'))
-                f.write("{}</group>\r".format(2 * indent))
-                f.write("{}-->\r".format(2 * indent))
+                f.write("{}<group id=\"{}\">\r\n".format(2 * indent, 'de'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://www.xmltvepg.nl/rytecxmltvGermany.gz'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://rytecepg.ipservers.eu/epg_data/rytecxmltvGermany.gz'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecxmltvGermany.gz'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecxmltvGermany.gz'))
+                f.write("{}<url>{}</url>\r\n".format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecxmltvGermany.gz'))
+                f.write("{}</group>\r\n".format(2 * indent))
+                f.write("{}-->\r\n".format(2 * indent))
             else:
                 for group in list_xmltv_sources:
-                    f.write("{}<group id=\"{}\">\r".format(2 * indent, self.xml_escape(group)))
+                    f.write("{}<group id=\"{}\">\r\n".format(2 * indent, self.xml_escape(group)))
                     for source in list_xmltv_sources[group]:
-                        f.write("{}<url>{}</url>\r".format(3 * indent, self.xml_escape(source)))
-                    f.write("{}</group>\r".format(2 * indent))
-            f.write("{}</xmltvextrasources>\r".format(indent))
+                        f.write("{}<url>{}</url>\r\n".format(3 * indent, self.xml_escape(source)))
+                    f.write("{}</group>\r\n".format(2 * indent))
+            f.write("{}</xmltvextrasources>\r\n".format(indent))
 
-            f.write("{}<categories>\r".format(indent))
+            f.write("{}<categories>\r\n".format(indent))
             for cat in categoryorder:
                 if cat in dictchannels:
                     if not cat.startswith("VOD -"):
-                        f.write("{}<category name=\"{}\" enabled=\"true\" />\r".format(2 * indent, self.xml_escape(cat).encode("utf-8")))
+                        f.write("{}<category name=\"{}\" enabled=\"true\" />\r\n"
+                                .format(2 * indent, self.xml_escape(cat).encode("utf-8")))
                     elif not vod_category_output:
                         # Replace multivod categories with single VOD placeholder
-                        f.write("{}<category name=\"{}\" enabled=\"true\" />\r".format(2 * indent, "VOD"))
+                        f.write("{}<category name=\"{}\" enabled=\"true\" />\r\n".format(2 * indent, "VOD"))
                         vod_category_output = True
-            f.write("{}</categories>\r".format(indent))
+            for cat in disabled_categories:
+                f.write("{}<category name=\"{}\" enabled=\"false\" />\r\n"
+                        .format(2 * indent, self.xml_escape(cat).encode("utf-8")))
 
-            f.write("{}<channels>\r".format(indent))
+            f.write("{}</categories>\r\n".format(indent))
+
+            f.write("{}<channels>\r\n".format(indent))
             for cat in categoryorder:
                 if cat in dictchannels:
                     # Don't output any of the VOD channels
                     if not cat.startswith("VOD"):
-                        f.write("{}<!-- {} -->\r".format(2 * indent, self.xml_escape(cat.encode("utf-8"))))
+                        f.write("{}<!-- {} -->\r\n".format(2 * indent, self.xml_escape(cat.encode("utf-8"))))
                         for x in dictchannels[cat]:                            
-                            f.write("{}<channel name=\"{}\" tvg-id=\"{}\" enabled=\"{}\" category=\"{}\" serviceRef=\"{}\" streamUrl=\"{}\" />\r"
+                            f.write("{}<channel name=\"{}\" tvg-id=\"{}\" enabled=\"{}\" category=\"{}\" serviceRef=\"{}\" clearStreamUrl=\"{}\" />\r\n"
                                     .format(2 * indent,
                                             self.xml_escape(x['title'].encode("utf-8")),
                                             self.xml_escape(x['tvgId'].encode("utf-8")),
                                             str(x['enabled']).lower(),
                                             self.xml_escape(cat.encode("utf-8")),
                                             self.xml_escape(x['serviceRef']),
-                                            self.xml_escape(x['streamUrl'])
+                                            "false" if x['streamUrl'] else "true"
                                             ))
 
-            f.write("{}</channels>\r".format(indent))
-
+            f.write("{}</channels>\r\n".format(indent))
             f.write("</mapping>")
 
     def download_picons(self, dictchannels, iconpath):
@@ -842,10 +856,10 @@ USAGE
         # Download m3u
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
-        categoryorder, dictchannels = e2m3uSetup.parsem3u(m3ufile, iptvtypes, delimiter_category, delimiter_title, delimiter_tvgid, delimiter_logourl)
+        categoryorder, disabled_categories, dictchannels = e2m3uSetup.parsem3u(m3ufile, iptvtypes, delimiter_category, delimiter_title, delimiter_tvgid, delimiter_logourl)
         list_xmltv_sources = e2m3uSetup.parse_map_xmltvsources_xml()
         # save xml mapping - should be after m3u parsing
-        e2m3uSetup.save_map_channels_xml(categoryorder, dictchannels, list_xmltv_sources)
+        e2m3uSetup.save_map_channels_xml(categoryorder, disabled_categories, dictchannels, list_xmltv_sources)
 
         #download picons
         if picons:
