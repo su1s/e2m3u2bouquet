@@ -219,7 +219,7 @@ which makes editing the crontab easier)
   * Reorder bouquets
   * Reorder channels within bouquets
   * Disable entire bouquet or individual channels
-  * Ability to change service reference (so that EPG from existing satelletite service can be used)  
+  * Ability to change service reference (so that EPG from existing satellite service can be used)  
   * Change tvg-id to match other xml epg feeds
   * Support unicode characters in playlist
   * Xml override file can set-up EPG-Importer config for different xmltv feeds
