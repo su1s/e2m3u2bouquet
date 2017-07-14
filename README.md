@@ -1,6 +1,6 @@
 # Enigma2 IPTV m3u to bouquet
 
-Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2bouquet/releases)
+Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2bouquet/releases/latest)
 
 ## Usage
 ```
