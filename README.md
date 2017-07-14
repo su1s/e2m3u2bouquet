@@ -225,5 +225,8 @@ which makes editing the crontab easier)
   * Xml override file can set-up EPG-Importer config for different xmltv feeds
   * Single VOD bouquet now default (use -M for multiple VOD bouquets)
   * Option for all channels bouquet (-a)
+#### v0.5.1
+* Stream Url no longer output to xml (replaced by clearStreamUrl). This means that custom override
+  maps can be shared as they no longer contain username and passwords
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
