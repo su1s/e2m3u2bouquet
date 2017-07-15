@@ -23,9 +23,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.5.1'
+__version__ = '0.5.2'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-14'
+__updated__ = '2017-07-15'
 
 
 DEBUG = 0
@@ -794,19 +794,11 @@ USAGE
         provider = args.providername
         username = args.username
         password = args.password
-        delimiter_category = args.delimiter_category
-        delimiter_title = args.delimiter_title
-        delimiter_tvgid = args.delimiter_tvgid
-        delimiter_logourl = args.delimiter_logourl
         # set delimiter positions if required
-        if delimiter_category is None:
-            delimiter_category = 7
-        if delimiter_title is None:
-            delimiter_title = 8
-        if delimiter_tvgid is None:
-            delimiter_tvgid = 1
-        if delimiter_logourl is None:
-            delimiter_logourl = 5
+        delimiter_category = 7 if args.delimiter_category is None else int(args.delimiter_category)
+        delimiter_title = 8 if args.delimiter_title is None else int(args.delimiter_title)
+        delimiter_tvgid = 1 if args.delimiter_tvgid is None else int(args.delimiter_tvgid)
+        delimiter_logourl = 5 if args.delimiter_logourl is None else int(args.delimiter_logourl)
         # Set epg to rytec if nothing else provided
         if epgurl is None:
             epgurl = "http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz"
