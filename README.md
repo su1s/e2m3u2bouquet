@@ -228,5 +228,8 @@ which makes editing the crontab easier)
 #### v0.5.1
 * Stream Url no longer output to xml (replaced by clearStreamUrl). This means that custom override
   maps can be shared as they no longer contain username and passwords
+ 
+#### v0.5.2
+* Fix bug where delimiter arguments weren't getting converted to ints
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
