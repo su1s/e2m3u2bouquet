@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # encoding: utf-8
 
 """
@@ -23,7 +23,7 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 __date__ = '2017-06-04'
 __updated__ = '2017-07-15'
 
