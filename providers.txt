@@ -8,4 +8,4 @@ VSTREAMS,http://vstreams.stablehq.co.uk:25461/get.php?username=USERNAME&password
 ROOT,http://root-iptv.is-found.org:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=m3u8,http://root-iptv.is-found.org:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 SUPERSTREAMS,http://superstreams.tv:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=hls,http://superstreams.tv:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 SUPREMACY,http://supremacystreams.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://supremacystreams.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-PMCLUB,http://service.the-pm.club:80/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://service.the-pm.club/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+PMCLUB,http://service.the-pm.club/vget?username=USERNAME&password=PASSWORD,http://service.the-pm.club/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
