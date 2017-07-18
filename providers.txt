@@ -10,4 +10,4 @@ SUPERSTREAMS,http://superstreams.tv:8080/get.php?username=USERNAME&password=PASS
 SUPREMACY,http://supremacystreams.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://supremacystreams.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 PMCLUB,http://service.the-pm.club/vget?username=USERNAME&password=PASSWORD,http://service.the-pm.club/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 2MIXIPTV,"http://2mickspl.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts","http://2mickspl.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD&action=get_simple_data_table&stream_id=X",7,8,1,5
-TINY,http://tinyiptv.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://tinyiptv.ddns:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+TINY,http://tinyiptv.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://tinyiptv.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
