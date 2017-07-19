@@ -11,4 +11,5 @@ SUPREMACY,http://supremacystreams.ddns.net:25461/get.php?username=USERNAME&passw
 PMC,http://service.the-pm.club/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://service.the-pm.club/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 2MIXIPTV,"http://2mickspl.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts","http://2mickspl.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD&action=get_simple_data_table&stream_id=X",7,8,1,5
 TINY,http://tinyiptv.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://tinyiptv.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-VADER,http://vaders.tv/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://vaders.tv/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5 
+VADER,http://vaders.tv/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://vaders.tv/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+UKSAT,http://highpteev.zapto.org:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://highpteev.zapto.org:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
