@@ -23,9 +23,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.5.3'
+__version__ = '0.5.4'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-15'
+__updated__ = '2017-07-20'
 
 
 DEBUG = 0
@@ -110,12 +110,48 @@ class IPTVSetup:
         try:
            urllib.urlretrieve(url, filename)
         except Exception, e:
-           raise (e)
+           raise e
         return filename
 
-    # core parsing routine
+    def download_bouquet(self, url):
+        """Download panel bouquet file from url"""
+        path = tempfile.gettempdir()
+        filename = os.path.join(path, 'userbouquet.panel.tv')
+        print("\n----Downloading providers bouquet file----")
+        if DEBUG:
+            print("bouqueturl = {}".format(url))
+        try:
+            urllib.urlretrieve(url, filename)
+        except Exception, e:
+            raise e
+        return filename
+
+    def parse_panel_bouquet(self, panel_bouquet_file):
+        """Check providers bouquet for custom service references
+        """
+        panel_bouquet = {}
+
+        if os.path.isfile(panel_bouquet_file):
+            with open(panel_bouquet_file, "r") as f:
+                for line in f:
+                    if '#SERVICE' in line:
+                        # get service ref values we need (dict value) and stream file (dict key)
+                        service = line.strip().split(':')
+                        if len(service) == 11:
+                            pos = service[10].rfind('/')
+                            if pos != -1 and (pos + 1 != len(service[10])):
+                                key = service[10][pos + 1:]
+                                value = ':'.join((service[3], service[4], service[5], service[6]))
+                                if value != '0:0:0:0':
+                                    # only add to dict if a custom service id is present
+                                    panel_bouquet[key] = value
+            if not DEBUG:
+                # remove panel bouquet file
+                os.remove(panel_bouquet_file)
+        return panel_bouquet
+
     def parsem3u(self, filename, all_iptv_stream_types, delimiter_category, delimiter_title,
-                 delimiter_tvgid, delimiter_logourl):
+                 delimiter_tvgid, delimiter_logourl, panel_bouquet):
         """core parsing routine"""
         # Extract and generate the following items from the m3u
         # 0 category
@@ -179,13 +215,22 @@ class IPTVSetup:
             num = catstartnum
             if cat in dictchannels:
                 if not cat.startswith("VOD"):
-                     for x in dictchannels[cat]:
-                        x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], num)
+                    for x in dictchannels[cat]:
+                        service_ref = "{:x}:0:0:0".format(num)
+                        if panel_bouquet:
+                            # check if we have a panels custom service ref
+                            pos = x['streamUrl'].rfind('/')
+                            if pos != -1 and (pos + 1 != len(x['streamUrl'])):
+                                m3u_stream_file = x['streamUrl'][pos + 1:]
+                                if m3u_stream_file in panel_bouquet:
+                                    # have a match use the panels custom service ref
+                                    service_ref = panel_bouquet[m3u_stream_file]
+                        x['serviceRef'] = "{}:0:1:{}:0:0:0".format(x['streamType'], service_ref)
                         num += 1
                 else:
                     for x in dictchannels[cat]:
                         x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], vod_service_id)
-            while (catstartnum < num):
+            while catstartnum < num:
                 catstartnum += category_offset
 
         # move all VOD categories to VOD placeholder position
@@ -220,8 +265,6 @@ class IPTVSetup:
 
         if not DEBUG:
             # remove old m3u file
-            path = tempfile.gettempdir()
-            filename = os.path.join(path, 'e2m3u2bouquet.m3u')
             if os.path.isfile(filename):
                 os.remove(filename)
 
@@ -324,9 +367,11 @@ class IPTVSetup:
                         if node is not None:
                             if node.attrib.get('enabled') == 'false':
                                 x['enabled'] = False
+                            x['titleOverride'] = node.attrib.get('nameOverride', '')
                             # default to current values if attribute doesn't exist
                             x['tvgId'] = node.attrib.get('tvg-id', x['tvgId'])
-                            x['serviceRef'] = node.attrib.get('serviceRef', x['serviceRef'])
+                            if node.attrib.get('serviceRef', None):
+                                x['serviceRef'] = node.attrib.get('serviceRef', x['serviceRef'])
                             # streamUrl no longer output to xml file but we still check and process it
                             x['streamUrl'] = node.attrib.get('streamUrl', x['streamUrl'])
                             clear_stream_url = node.attrib.get('clearStreamUrl') == 'true'
@@ -405,9 +450,10 @@ class IPTVSetup:
                     if not cat.startswith("VOD"):
                         f.write("{}<!-- {} -->\r\n".format(2 * indent, self.xml_escape(cat.encode("utf-8"))))
                         for x in dictchannels[cat]:                            
-                            f.write("{}<channel name=\"{}\" tvg-id=\"{}\" enabled=\"{}\" category=\"{}\" serviceRef=\"{}\" clearStreamUrl=\"{}\" />\r\n"
+                            f.write("{}<channel name=\"{}\" nameOverride=\"{}\" tvg-id=\"{}\" enabled=\"{}\" category=\"{}\" serviceRef=\"{}\" clearStreamUrl=\"{}\" />\r\n"
                                     .format(2 * indent,
                                             self.xml_escape(x['title'].encode("utf-8")),
+                                            self.xml_escape(x.get('titleOverride', '').encode("utf-8")),
                                             self.xml_escape(x['tvgId'].encode("utf-8")),
                                             str(x['enabled']).lower(),
                                             self.xml_escape(cat.encode("utf-8")),
@@ -428,7 +474,7 @@ class IPTVSetup:
             if not cat.startswith('VOD'):
                 # Download Picon if not VOD
                 for x in dictchannels[cat]:
-                    self.download_picon_file(x['logoUrl'], x['title'], iconpath)
+                    self.download_picon_file(x['logoUrl'], self.get_service_title(x), iconpath)
         print("\nPicons download completed...")
         print("Box will need restarted for Picons to show...")
 
@@ -571,7 +617,7 @@ class IPTVSetup:
                     cat_filename = "VOD"
 
                 bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}.tv'
-                                               .format(cat_filename))
+                                                .format(cat_filename))
                 if DEBUG:
                     print("Creating: {}".format(bouquet_filepath))
 
@@ -606,8 +652,8 @@ class IPTVSetup:
         """
         f.write("#SERVICE {}:{}:{}\n"
                 .format(channel['serviceRef'], channel['streamUrl']
-                        .replace(":", "%3a"), channel['title'].encode("utf-8")))
-        f.write("#DESCRIPTION {}\n".format(channel['title'].encode("utf-8")))
+                        .replace(":", "%3a"), self.get_service_title(channel).encode("utf-8")))
+        f.write("#DESCRIPTION {}\n".format(self.get_service_title(channel).encode("utf-8")))
 
     def save_bouquet_index_entry(self, filename):
         """Add to the main bouquets.tv file
@@ -638,7 +684,8 @@ class IPTVSetup:
                         for x in dictchannels[cat]:
                             if x['enabled']:
                                 f.write("{}<channel id=\"{}\">{}:http%3a//example.m3u8</channel> <!-- {} -->\n"
-                                        .format(indent, self.xml_escape(x['tvgId'].encode("utf-8")), x['serviceRef'], self.xml_escape(x['title'].encode("utf-8"))))
+                                        .format(indent, self.xml_escape(x['tvgId'].encode("utf-8")), x['serviceRef'],
+                                                self.xml_escape(self.get_service_title(x).encode("utf-8"))))
             f.write("</channels>\n")
 
         # create epg-importer sources file for providers feed
@@ -719,6 +766,11 @@ class IPTVSetup:
             .replace("&gt;", ">") \
             .replace("&amp;", "&")
 
+    def get_service_title(self, channel):
+        """Return the title override if set else the title
+        """
+        return channel['titleOverride'] if channel.get('titleOverride', False) else channel['title']
+
 def main(argv=None):  # IGNORE:C0111
     # Command line options.
     if argv is None:
@@ -751,13 +803,13 @@ USAGE
         urlgroup.add_argument("-e", "--epgurl", dest="epgurl", action="store",
                               help="URL source for XML TV epg data sources")
         urlgroup.add_argument("-d1", "--delimiter_category", dest="delimiter_category", action="store",
-                              help="Delimiter (\") count for category - default = 7")
+                              help="Delimiter (\") count for category - default = 7", type=int)
         urlgroup.add_argument("-d2", "--delimiter_title", dest="delimiter_title", action="store",
-                              help="Delimiter (\") count for title - default = 8")
+                              help="Delimiter (\") count for title - default = 8", type=int)
         urlgroup.add_argument("-d3", "--delimiter_tvgid", dest="delimiter_tvgid", action="store",
-                              help="Delimiter (\") count for tvg_id - default = 1")
+                              help="Delimiter (\") count for tvg_id - default = 1", type=int, default=1)
         urlgroup.add_argument("-d4", "--delimiter_logourl", dest="delimiter_logourl", action="store",
-                              help="Delimiter (\") count for logourl - default = 5")
+                              help="Delimiter (\") count for logourl - default = 5", type=int)
         # Provider based setup
         providergroup = parser.add_argument_group("Provider Based Setup")
         providergroup.add_argument("-n", "--providername", dest="providername", action="store",
@@ -773,6 +825,8 @@ USAGE
                             help="Create multiple VOD bouquets rather single VOD bouquet")
         parser.add_argument("-a", "--allbouquet", dest="allbouquet", action="store_true",
                             help="Create all channels bouquet")
+        parser.add_argument('-b', '--bouqueturl', dest="bouquet_url", action="store",
+                            help="URL to download providers bouquet - to map custom service references")
         parser.add_argument("-P", "--picons", dest="picons", action="store_true",
                             help="Automatically download of Picons, this option will slow the execution")
         parser.add_argument("-q", "--iconpath", dest="iconpath", action="store",
@@ -789,16 +843,17 @@ USAGE
         uninstall = args.uninstall
         multivod = args.multivod
         allbouquet = args.allbouquet
+        bouquet_url = args.bouquet_url
         picons = args.picons
         iconpath = args.iconpath
         provider = args.providername
         username = args.username
         password = args.password
         # set delimiter positions if required
-        delimiter_category = 7 if args.delimiter_category is None else int(args.delimiter_category)
-        delimiter_title = 8 if args.delimiter_title is None else int(args.delimiter_title)
-        delimiter_tvgid = 1 if args.delimiter_tvgid is None else int(args.delimiter_tvgid)
-        delimiter_logourl = 5 if args.delimiter_logourl is None else int(args.delimiter_logourl)
+        delimiter_category = 7 if args.delimiter_category is None else args.delimiter_category
+        delimiter_title = 8 if args.delimiter_title is None else args.delimiter_title
+        delimiter_tvgid = 1 if args.delimiter_tvgid is None else args.delimiter_tvgid
+        delimiter_logourl = 5 if args.delimiter_logourl is None else args.delimiter_logourl
         # Set epg to rytec if nothing else provided
         if epgurl is None:
             epgurl = "http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz"
@@ -809,8 +864,8 @@ USAGE
             provider = "E2m3u2Bouquet"
         # Check we have enough to proceed
         if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)) and uninstall is False:
-            print('Please ensure correct command line options as passed to the program, for help use --help"')
-            # Work out how to print the usage string here
+            print('Please ensure correct command line options are passed to the program, for help use --help\n')            
+            parser.print_usage()
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -835,7 +890,7 @@ USAGE
         print("Uninstall only, program exiting ...")
         sys.exit(1)  # Quit here if we just want to uninstall
     else:
-        # Work out provider based setup if thats what we have
+        # Work out provider based setup if that's what we have
         if ((provider is not None) and (username is not None) or (password is not None)):
             providersfile = e2m3uSetup.download_providers(PROVIDERSURL)
             e2m3uSetup.read_providers(providersfile)
@@ -845,10 +900,17 @@ USAGE
                 print("----ERROR----")
                 print("Provider not found, supported providers = " + supported_providers)
                 sys(exit(1))
+        # Download panel bouquet
+        panel_bouquet = None
+        if bouquet_url:
+            panel_bouquet_file = e2m3uSetup.download_bouquet(bouquet_url)
+            panel_bouquet = e2m3uSetup.parse_panel_bouquet(panel_bouquet_file)
         # Download m3u
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
-        categoryorder, disabled_categories, dictchannels = e2m3uSetup.parsem3u(m3ufile, iptvtypes, delimiter_category, delimiter_title, delimiter_tvgid, delimiter_logourl)
+        categoryorder, disabled_categories, dictchannels = e2m3uSetup.parsem3u(m3ufile, iptvtypes, delimiter_category,
+                                                                               delimiter_title, delimiter_tvgid,
+                                                                               delimiter_logourl, panel_bouquet)
         list_xmltv_sources = e2m3uSetup.parse_map_xmltvsources_xml()
         # save xml mapping - should be after m3u parsing
         e2m3uSetup.save_map_channels_xml(categoryorder, disabled_categories, dictchannels, list_xmltv_sources)
