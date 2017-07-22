@@ -239,7 +239,8 @@ which makes editing the crontab easier)
 * Minor fixes
 
 #### v0.5.4
-* Add nameOverride attribute to xml files to allow channel name to be changed
+* Add nameOverride attribute to xml files to allow channel name or category name to be changed
 * Add option to use service references from providers bouquet file
+* Add SSL fix for some boxes (unconfirmed if working)
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
