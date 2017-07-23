@@ -35,6 +35,7 @@ optional arguments:
   -q ICONPATH, --iconpath ICONPATH
                         Option path to store picons, if not supplied defaults
                         to /usr/share/enigma2/picon/
+  -xs, --xcludesref     Disable service ref overriding from override.xml file
   -U, --uninstall       Uninstall all changes made by this script
   -V, --version         show program's version number and exit
 
@@ -240,7 +241,8 @@ which makes editing the crontab easier)
 
 #### v0.5.4
 * Add nameOverride attribute to xml files to allow channel name or category name to be changed
-* Add option to use service references from providers bouquet file
+* Add option to use service references from providers bouquet file. See -b argument
 * Add SSL fix for some boxes (unconfirmed if working)
+* Improved service ref id generation logic to reduce (hopefully eliminate) id conflicts especially if override file is used
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
