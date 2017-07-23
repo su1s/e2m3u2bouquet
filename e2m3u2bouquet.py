@@ -703,8 +703,8 @@ class IPTVSetup:
     def save_bouquet_index_entry(self, filename):
         """Add to the main bouquets.tv file
         """
-        with open(ENIGMAPATH + "bouquets.tv", "a") as f:
-            f.write("#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET \"userbouquet.suls_iptv_{}.tv\" ORDER BY bouquet\n"
+        with open(ENIGMAPATH + 'bouquets.tv', 'a') as f:
+            f.write('#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "userbouquet.suls_iptv_{}.tv" ORDER BY bouquet\n'
                     .format(filename))
 
     def reload_bouquets(self):
@@ -721,18 +721,18 @@ class IPTVSetup:
         channels_filename = os.path.join(EPGIMPORTPATH, 'suls_iptv_channels.xml')
 
         with open(channels_filename, "w+") as f:
-            f.write("<channels>\n")
+            f.write('<channels>\n')
             for cat in categoryorder:
                 if cat in dictchannels:
-                    if not cat.startswith("VOD"):
+                    if not cat.startswith('VOD'):
                         cat_title = self.get_category_title(cat, category_options)
 
-                        f.write("{}<!-- {} -->\n".format(indent, self.xml_escape(cat_title.encode("utf-8"))))
+                        f.write('{}<!-- {} -->\n'.format(indent, self.xml_escape(cat_title.encode('utf-8'))))
                         for x in dictchannels[cat]:
                             if x['enabled']:
-                                f.write("{}<channel id=\"{}\">{}:http%3a//example.m3u8</channel> <!-- {} -->\n"
-                                        .format(indent, self.xml_escape(x['tvgId'].encode("utf-8")), x['serviceRef'],
-                                                self.xml_escape(self.get_service_title(x).encode("utf-8"))))
+                                f.write('{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
+                                        .format(indent, self.xml_escape(x['tvgId'].encode('utf-8')), x['serviceRef'],
+                                                self.xml_escape(self.get_service_title(x).encode('utf-8'))))
             f.write("</channels>\n")
 
         # create epg-importer sources file for providers feed
@@ -753,14 +753,14 @@ class IPTVSetup:
                                        .format(self.get_safe_filename(source_name)))
 
         with open(os.path.join(EPGIMPORTPATH, source_filename), "w+") as f:
-            f.write("<sources>\n")
-            f.write("{}<source type=\"gen_xmltv\" channels=\"{}\">\n"
+            f.write('<sources>\n')
+            f.write('{}<source type="gen_xmltv" channels="{}">\n'
                     .format(indent, channels_filename))
-            f.write("{}<description>{}</description>\n".format(2 * indent, self.xml_escape(source_name)))
+            f.write('{}<description>{}</description>\n'.format(2 * indent, self.xml_escape(source_name)))
             for source in sources:
-                f.write("{}<url>{}</url>\n".format(2 * indent, self.xml_escape(source)))
-            f.write("{}</source>\n".format(indent))
-            f.write("</sources>\n")
+                f.write('{}<url>{}</url>\n'.format(2 * indent, self.xml_escape(source)))
+            f.write('{}</source>\n'.format(indent))
+            f.write('</sources>\n')
 
     def read_providers(self,providerfile):
         # Check we have data
@@ -806,7 +806,7 @@ class IPTVSetup:
             .replace(">", "&gt;")
 
     def xml_unescape(self, string):
-        return string.replace("&quot;", "\"") \
+        return string.replace('&quot;', '"') \
             .replace() \
             .replace("&apos;", "'") \
             .replace("&lt;", "<") \
