@@ -250,7 +250,8 @@ class IPTVSetup:
                                 if m3u_stream_file in panel_bouquet:
                                     # have a match use the panels custom service ref
                                     service_ref = panel_bouquet[m3u_stream_file]
-                        elif not x['serviceRefOverride']:
+                        if not x['serviceRefOverride']:
+                            # if service ref is not overridden in xml update
                             x['serviceRef'] = "{}:0:1:{}:0:0:0".format(x['streamType'], service_ref)
                         num += 1
                 else:
@@ -729,9 +730,10 @@ class IPTVSetup:
 
                         f.write('{}<!-- {} -->\n'.format(indent, self.xml_escape(cat_title.encode('utf-8'))))
                         for x in dictchannels[cat]:
+                            tvg_id = x['tvgId'] if x['tvgId'] else self.get_service_title(x)
                             if x['enabled']:
                                 f.write('{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
-                                        .format(indent, self.xml_escape(x['tvgId'].encode('utf-8')), x['serviceRef'],
+                                        .format(indent, self.xml_escape(tvg_id.encode('utf-8')), x['serviceRef'],
                                                 self.xml_escape(self.get_service_title(x).encode('utf-8'))))
             f.write("</channels>\n")
 
@@ -865,7 +867,7 @@ USAGE
         urlgroup.add_argument("-d2", "--delimiter_title", dest="delimiter_title", action="store",
                               help="Delimiter (\") count for title - default = 8", type=int)
         urlgroup.add_argument("-d3", "--delimiter_tvgid", dest="delimiter_tvgid", action="store",
-                              help="Delimiter (\") count for tvg_id - default = 1", type=int, default=1)
+                              help="Delimiter (\") count for tvg_id - default = 1", type=int)
         urlgroup.add_argument("-d4", "--delimiter_logourl", dest="delimiter_logourl", action="store",
                               help="Delimiter (\") count for logourl - default = 5", type=int)
         # Provider based setup
