@@ -244,5 +244,6 @@ which makes editing the crontab easier)
 * Add option to use service references from providers bouquet file. See -b argument
 * Add SSL fix for some boxes (unconfirmed if working)
 * Improved service ref id generation logic to reduce (hopefully eliminate) id conflicts especially if override file is used
+* Add option -xs to stop service refs from override.xml file being used
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
