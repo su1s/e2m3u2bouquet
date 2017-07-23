@@ -475,7 +475,14 @@ class IPTVSetup:
                                         ))
                     elif not vod_category_output:
                         # Replace multivod categories with single VOD placeholder
-                        f.write('{}<category name="{}" enabled="true" />\r\n'.format(2 * indent, 'VOD'))
+                        cat_title_override = ''
+                        if 'VOD' in category_options:
+                            cat_title_override = category_options['VOD'].get('nameOverride', '')
+                        f.write('{}<category name="{}" nameOverride="{}" enabled="true" />\r\n'
+                                .format(2 * indent,
+                                        'VOD',
+                                        self.xml_escape(cat_title_override).encode('utf-8'),
+                                        ))
                         vod_category_output = True
             for cat in category_options:
                 if 'enabled' in category_options[cat] and category_options[cat]['enabled'] is False:
@@ -655,7 +662,6 @@ class IPTVSetup:
         for cat in category_order:
             if cat in dictchannels:
                 cat_title = self.get_category_title(cat, category_options)
-
                 # create file
                 cat_filename = self.get_safe_filename(cat_title)
 
@@ -669,14 +675,27 @@ class IPTVSetup:
 
                 if cat not in vod_categories or multivod:
                     with open(bouquet_filepath, "w+") as f:
-                        f.write("#NAME IPTV - {}\n".format(cat_title.encode("utf-8")))
+                        bouquet_name = 'IPTV - {}'.format(cat_title).decode("utf-8")
+                        if not cat.startswith('VOD -') and category_options[cat].get('nameOverride', False):
+                            bouquet_name = category_options[cat]['nameOverride'].decode('utf-8')
+                        elif cat.startswith('VOD -'):
+                            if 'VOD' in category_options and category_options['VOD'].get('nameOverride', False):
+                                bouquet_name = '{} - {}'\
+                                    .format(category_options['VOD']['nameOverride'].decode('utf-8'),
+                                            cat_title.replace('VOD - ', '').decode("utf-8"))
+
+                        f.write("#NAME {}\n".format(bouquet_name.encode("utf-8")))
                         for x in dictchannels[cat]:
                             if x['enabled']:
                                 self.save_bouquet_entry(f, x)
                 elif not vod_category_output and not multivod:
                     # not multivod - output all the vod services in one file
                     with open(bouquet_filepath, "w+") as f:
-                        f.write("#NAME IPTV - {}\n".format("VOD"))
+                        bouquet_name = 'IPTV - VOD'.decode("utf-8")
+                        if 'VOD' in category_options and category_options['VOD'].get('nameOverride', False):
+                            bouquet_name = category_options['VOD']['nameOverride'].decode('utf-8')
+
+                        f.write("#NAME {}\n".format(bouquet_name.encode("utf-8")))
                         for vodcat in vod_categories:
                             if vodcat in dictchannels:
                                 # Insert group description placeholder in bouquet
