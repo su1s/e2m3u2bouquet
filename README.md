@@ -7,8 +7,8 @@ Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2b
 usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL] [-d1 DELIMITER_CATEGORY]
                         [-d2 DELIMITER_TITLE] [-d3 DELIMITER_TVGID]
                         [-d4 DELIMITER_LOGOURL] [-n PROVIDERNAME]
-                        [-u USERNAME] [-p PASSWORD] [-i] [-M] [-a] [-P]
-                        [-q ICONPATH] [-U] [-V]
+                        [-u USERNAME] [-p PASSWORD] [-i] [-M] [-a] 
+                        [-b BOUQUET_URL] [-P] [-q ICONPATH] [-U] [-V]						
 
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 
@@ -27,11 +27,15 @@ optional arguments:
   -M, --multivod        Create multiple VOD bouquets rather than single VOD
                         bouquet
   -a, --allbouquet      Create all channels bouquet
+  -b BOUQUET_URL, --bouqueturl BOUQUET_URL
+                        URL to download providers bouquet - to map custom
+                        service references  
   -P, --picons          Automatically download of Picons, this option will
                         slow the execution
   -q ICONPATH, --iconpath ICONPATH
                         Option path to store picons, if not supplied defaults
                         to /usr/share/enigma2/picon/
+  -xs, --xcludesref     Disable service ref overriding from override.xml file
   -U, --uninstall       Uninstall all changes made by this script
   -V, --version         show program's version number and exit
 
@@ -231,5 +235,15 @@ which makes editing the crontab easier)
  
 #### v0.5.2
 * Fix bug where delimiter arguments weren't getting converted to ints
+
+#### v0.5.3
+* Minor fixes
+
+#### v0.5.4
+* Add nameOverride attribute to xml files to allow channel name or category name to be changed
+* Add option to use service references from providers bouquet file. See -b argument
+* Add SSL fix for some boxes (unconfirmed if working)
+* Improved service ref id generation logic to reduce (hopefully eliminate) id conflicts especially if override file is used
+* Add option -xs to stop service refs from override.xml file being used
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
