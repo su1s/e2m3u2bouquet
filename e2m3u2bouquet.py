@@ -28,9 +28,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.5.4'
+__version__ = '0.5.5'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-23'
+__updated__ = '2017-07-26'
 
 
 DEBUG = 0
@@ -297,13 +297,11 @@ class IPTVSetup:
     def set_streamtypes_vodcats(self, channeldict, all_iptv_stream_types):
         """Set the stream types and VOD categories
         """
-        if channeldict['streamUrl'].endswith(('.mp4', 'mkv', '.avi', "mpg")):
+        if channeldict['streamUrl'].endswith('.ts') and not channeldict['category'].startswith('VOD'):
+            channeldict['streamType'] = '4097' if all_iptv_stream_types else '1'
+        else:
             channeldict['category'] = u"VOD - {}".format(channeldict['category'])
             channeldict['streamType'] = "4097"
-        elif all_iptv_stream_types:
-            channeldict['streamType'] = "4097"
-        else:
-            channeldict['streamType'] = "1"
 
     def parse_map_bouquet_xml(self, dictchannels):
         """Check for a mapping override file and parses it if found
@@ -466,12 +464,16 @@ class IPTVSetup:
             for cat in categoryorder:
                 if cat in dictchannels:
                     if not cat.startswith('VOD -'):
-                        cat_title_override = category_options[cat].get('nameOverride', '')
+                        cat_title_override = ''
+                        idStart = ''
+                        if cat in category_options:
+                            cat_title_override = category_options[cat].get('nameOverride', '')
+                            idStart = category_options[cat].get('idStart', '')
                         f.write('{}<category name="{}" nameOverride="{}" idStart="{}" enabled="true" />\r\n'
                                 .format(2 * indent,
                                         self.xml_escape(cat).encode('utf-8'),
                                         self.xml_escape(cat_title_override).encode('utf-8'),
-                                        category_options[cat].get('idStart', '')
+                                        idStart
                                         ))
                     elif not vod_category_output:
                         # Replace multivod categories with single VOD placeholder
@@ -620,7 +622,7 @@ class IPTVSetup:
         name = name.lower()
         return name
 
-    def create_all_channels_bouquet(self, category_order, dictchannels):
+    def create_all_channels_bouquet(self, category_order, category_options, dictchannels):
         """Create the Enigma2 all channels bouquet
         """
         print("\n----Creating all channels bouquet----")
@@ -640,9 +642,10 @@ class IPTVSetup:
             for cat in category_order:
                 if cat in dictchannels:
                     if cat not in vod_categories:
+                        cat_title = self.get_category_title(cat, category_options)
                         # Insert group description placeholder in bouquet
                         f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0:\n")
-                        f.write("#DESCRIPTION {}\n".format(cat))
+                        f.write("#DESCRIPTION {}\n".format(cat_title))
                         for x in dictchannels[cat]:
                             if x['enabled']:
                                 self.save_bouquet_entry(f, x)
@@ -676,9 +679,10 @@ class IPTVSetup:
                 if cat not in vod_categories or multivod:
                     with open(bouquet_filepath, "w+") as f:
                         bouquet_name = 'IPTV - {}'.format(cat_title).decode("utf-8")
-                        if not cat.startswith('VOD -') and category_options[cat].get('nameOverride', False):
-                            bouquet_name = category_options[cat]['nameOverride'].decode('utf-8')
-                        elif cat.startswith('VOD -'):
+                        if not cat.startswith('VOD -'):
+                            if cat in category_options and category_options[cat].get('nameOverride', False):
+                                bouquet_name = category_options[cat]['nameOverride'].decode('utf-8')
+                        else:
                             if 'VOD' in category_options and category_options['VOD'].get('nameOverride', False):
                                 bouquet_name = '{} - {}'\
                                     .format(category_options['VOD']['nameOverride'].decode('utf-8'),
@@ -1004,7 +1008,7 @@ USAGE
             e2m3uSetup.download_picons(dictchannels, iconpath)
         # Create bouquet files
         if allbouquet:
-            e2m3uSetup.create_all_channels_bouquet(categoryorder, dictchannels)
+            e2m3uSetup.create_all_channels_bouquet(categoryorder, category_options, dictchannels)
         e2m3uSetup.create_bouquets(categoryorder, category_options, dictchannels, multivod)
         # Now create custom channels for each bouquet
         print("\n----Creating EPG-Importer config ----")
@@ -1020,7 +1024,6 @@ USAGE
         print("Select sources and enable the new IPTV sources (will be listed as {})".format(provider))
         print("Save the selected sources, press yellow button to start manual import")
         print("You can then set EPG-Importer to automatically import the EPG every day")
-
 
 if __name__ == "__main__":
     # if DEBUG:
