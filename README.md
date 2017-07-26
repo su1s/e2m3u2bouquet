@@ -246,4 +246,7 @@ which makes editing the crontab easier)
 * Improved service ref id generation logic to reduce (hopefully eliminate) id conflicts especially if override file is used
 * Add option -xs to stop service refs from override.xml file being used
 
+#### v0.5.5
+* Minor fixes
+
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
