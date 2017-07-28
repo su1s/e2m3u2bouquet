@@ -28,9 +28,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.5.5'
+__version__ = '0.5.5.1'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-26'
+__updated__ = '2017-07-28'
 
 
 DEBUG = 0
@@ -297,7 +297,8 @@ class IPTVSetup:
     def set_streamtypes_vodcats(self, channeldict, all_iptv_stream_types):
         """Set the stream types and VOD categories
         """
-        if channeldict['streamUrl'].endswith('.ts') and not channeldict['category'].startswith('VOD'):
+        if (channeldict['streamUrl'].endswith('.ts') or channeldict['streamUrl'].endswith('.m3u8')) \
+                and not channeldict['category'].startswith('VOD'):
             channeldict['streamType'] = '4097' if all_iptv_stream_types else '1'
         else:
             channeldict['category'] = u"VOD - {}".format(channeldict['category'])
