@@ -15,5 +15,5 @@ VADER,http://vaders.tv/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus
 UKSAT,http://highpteev.zapto.org:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://highpteev.zapto.org:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 MEGA,http://whitelabel.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://whitelabel.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,3,1,5
 GHOST,http://ghosttechuk.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz,7,8,1,5
-PRO,http://quickiptv.pro:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://quickiptv.pro:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+QUICK,http://quickiptv.pro:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://quickiptv.pro:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 CKINGIPTV,http://ckingiptv.tk:8000/get.php?username=USERNAME&password=USERNAME&type=m3u_plus&output=ts,http://ckingiptv.tk:8000/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
