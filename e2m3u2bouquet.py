@@ -20,6 +20,7 @@ import tempfile
 import glob
 import ssl
 import hashlib
+import base64
 from PIL import Image
 from collections import OrderedDict
 from collections import deque
@@ -28,9 +29,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.5.5.1'
+__version__ = '0.5.5.2'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-28'
+__updated__ = '2017-07-29'
 
 
 DEBUG = 0
@@ -40,7 +41,10 @@ ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
 PICONSPATH = "/usr/share/enigma2/picon/"
 PROVIDERS = []
-PROVIDERSURL = "https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/providers.txt"
+PROVIDERSURL = "https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/providers.enc"
+
+
+
 
 class CLIError(Exception):
     """Generic exception to raise and log different fatal errors."""
@@ -800,6 +804,7 @@ class IPTVSetup:
             if line == "400: Invalid request\n":
                 print("Providers download is invalid please resolve or use URL based setup")
                 sys(exit(1))
+            line = base64.b64decode(line)
             PROVIDERS.append({'name': line.split(',')[0],
                               'm3u': line.split(',')[1],
                               'epg': line.split(',')[2],
@@ -808,6 +813,7 @@ class IPTVSetup:
                               'delimiter_tvgid': int(line.split(',')[5]),
                               'delimiter_logourl': int(line.split(',')[6])})
         f.close()
+        return PROVIDERS
 
     def process_provider(self, provider, username, password):
         supported_providers = ""
