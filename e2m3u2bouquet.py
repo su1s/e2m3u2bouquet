@@ -9,6 +9,7 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 @license:    GNU GENERAL PUBLIC LICENSE version 3
 @deffield    updated: Updated
 """
+
 import sys
 import os
 import re
