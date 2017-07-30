@@ -9,6 +9,7 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 @license:    GNU GENERAL PUBLIC LICENSE version 3
 @deffield    updated: Updated
 """
+
 import sys
 import os
 import re
@@ -20,6 +21,7 @@ import tempfile
 import glob
 import ssl
 import hashlib
+import base64
 from PIL import Image
 from collections import OrderedDict
 from collections import deque
@@ -40,7 +42,7 @@ ENIGMAPATH = "/etc/enigma2/"
 EPGIMPORTPATH = "/etc/epgimport/"
 PICONSPATH = "/usr/share/enigma2/picon/"
 PROVIDERS = {}
-PROVIDERSURL = "https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/providers.txt"
+PROVIDERSURL = "https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/providers.enc"
 
 class CLIError(Exception):
     """Generic exception to raise and log different fatal errors."""
@@ -802,6 +804,7 @@ class IPTVSetup:
             if line == "400: Invalid request\n":
                 print("Providers download is invalid please resolve or use URL based setup")
                 sys(exit(1))
+            line = base64.b64decode(line)
             provider = {
                 'name': line.split(',')[0],
                 'm3u': line.split(',')[1],
@@ -811,8 +814,7 @@ class IPTVSetup:
                 'delimiter_tvgid': int(line.split(',')[5]),
                 'delimiter_logourl': int(line.split(',')[6])
             }
-            PROVIDERS[provider['name']] = provider
-        f.close()
+            PROVIDERS[provider['name']] = provider        f.close()
         return PROVIDERS
 
     def process_provider(self, provider, username, password):
