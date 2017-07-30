@@ -814,7 +814,8 @@ class IPTVSetup:
                 'delimiter_tvgid': int(line.split(',')[5]),
                 'delimiter_logourl': int(line.split(',')[6])
             }
-            PROVIDERS[provider['name']] = provider        f.close()
+            PROVIDERS[provider['name']] = provider
+        f.close()
         return PROVIDERS
 
     def process_provider(self, provider, username, password):
