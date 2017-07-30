@@ -249,4 +249,7 @@ which makes editing the crontab easier)
 #### v0.5.5
 * Minor fixes
 
+#### v0.5.6
+* Minor fixes
+
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
