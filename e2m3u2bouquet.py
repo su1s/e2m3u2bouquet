@@ -77,9 +77,10 @@ class IPTVSetup:
                     os.remove(ENIGMAPATH + fname)
             # Custom Channels and sources
             print("Removing IPTV custom channels...")
-            for fname in os.listdir(EPGIMPORTPATH):
-                if "suls_iptv_" in fname:
-                    os.remove(os.path.join(EPGIMPORTPATH, fname))
+            if os.path.isdir(EPGIMPORTPATH):
+                for fname in os.listdir(EPGIMPORTPATH):
+                    if "suls_iptv_" in fname:
+                        os.remove(os.path.join(EPGIMPORTPATH, fname))
             # bouquets.tv
             print("Removing IPTV bouquets from bouquets.tv...")
             os.rename(ENIGMAPATH + "bouquets.tv", ENIGMAPATH + "bouquets.tv.bak")
