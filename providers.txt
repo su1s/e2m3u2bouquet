@@ -18,3 +18,7 @@ GHOST,http://ghosttechuk.ddns.net:25461/get.php?username=USERNAME&password=PASSW
 QUICK,http://quickiptv.pro:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://quickiptv.pro:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 CKINGIPTV,http://ckingiptv.tk:8000/get.php?username=USERNAME&password=USERNAME&type=m3u_plus&output=ts,http://ckingiptv.tk:8000/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 SATSNI,http://satsni.club:34656/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://satsni.club:34656/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+ELITE,http://ajsky.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ajsky.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+IP6,http://ip6.spdemon.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ip6.spdemon.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+OHSERVICES,http://ohservices.ddns.net:5050/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ohservices.ddns.net:5050/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+SPOTON,http://stream.spotoniptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://stream.spotoniptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5

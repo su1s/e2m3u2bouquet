@@ -30,9 +30,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.5.6'
+__version__ = '0.6'
 __date__ = '2017-06-04'
-__updated__ = '2017-07-30'
+__updated__ = '2017-08-01'
 
 
 DEBUG = 0
@@ -77,9 +77,10 @@ class IPTVSetup:
                     os.remove(ENIGMAPATH + fname)
             # Custom Channels and sources
             print("Removing IPTV custom channels...")
-            for fname in os.listdir(EPGIMPORTPATH):
-                if "suls_iptv_" in fname:
-                    os.remove(os.path.join(EPGIMPORTPATH, fname))
+            if os.path.isdir(EPGIMPORTPATH):
+                for fname in os.listdir(EPGIMPORTPATH):
+                    if "suls_iptv_" in fname:
+                        os.remove(os.path.join(EPGIMPORTPATH, fname))
             # bouquets.tv
             print("Removing IPTV bouquets from bouquets.tv...")
             os.rename(ENIGMAPATH + "bouquets.tv", ENIGMAPATH + "bouquets.tv.bak")
@@ -163,11 +164,12 @@ class IPTVSetup:
                  delimiter_tvgid, delimiter_logourl, panel_bouquet, xcludesref):
         """core parsing routine"""
         # Extract and generate the following items from the m3u
-        # 0 category
-        # 1 title
-        # 2 tvg-id
-        # 3 logo url
-        # 4 stream url
+        # group-title
+        # tvg-name
+        # tvg-id
+        # tvg-logo
+        # stream-name
+        # stream-url
 
         print("\n----Parsing m3u file----")
         try:
@@ -187,28 +189,39 @@ class IPTVSetup:
                 if 'EXTM3U' in line:  # First line we are not interested
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
-                    channel = [(line.split('"')[delimiter_category]).strip(),
-                               (line.split('"')[delimiter_title]).lstrip(',').strip(),
-                               (line.split('"')[delimiter_tvgid]).strip(),
-                               line.split('"')[delimiter_logourl].strip()]
-                elif 'http:' in line:
-                    channel.append(line.strip())
-                    channeldict = {'category': channel[0].decode('utf-8'), 'title': channel[1].decode('utf-8'),
-                                   'tvgId': channel[2].decode('utf-8'), 'logoUrl': channel[3], 'streamUrl': channel[4],
+                    channeldict = {'tvg-id': '', 'tvg-name': '', 'tvg-logo': '', 'group-title': '', 'stream-name': '',
+                                   'stream-url': '',
                                    'enabled': True,
                                    'nameOverride': '',
                                    'serviceRef': '',
                                    'serviceRefOverride': False
                                    }
-                    if channeldict['category'] == "":
-                        channeldict['category'] = "None"
+                    channel = line.split('"')
+                    # strip unwanted info at start of line
+                    pos = channel[0].find(' ')
+                    channel[0] = channel[0][pos:]
+
+                    # loop through params and build dict
+                    for i in xrange(0, len(channel) - 2, 2):
+                        channeldict[channel[i].lower().strip(' =')] = channel[i + 1].decode('utf-8')
+
+                    # Get the stream name from end of line (after comma)
+                    stream_name_pos = line.rfind(',')
+                    if stream_name_pos != -1:
+                        channeldict['stream-name'] = line[stream_name_pos + 1:].strip().decode('utf-8')
+
+                    # Set default name for any blank groups
+                    if channeldict['group-title'] == '':
+                        channeldict['group-title'] = u'None'
+                elif 'http:' in line:
+                    channeldict['stream-url'] = line.strip()
 
                     self.set_streamtypes_vodcats(channeldict, all_iptv_stream_types)
 
-                    if channeldict['category'] not in dictchannels:
-                        dictchannels[channeldict['category']] = [channeldict]
+                    if channeldict['group-title'] not in dictchannels:
+                        dictchannels[channeldict['group-title']] = [channeldict]
                     else:
-                        dictchannels[channeldict['category']].append(channeldict)
+                        dictchannels[channeldict['group-title']].append(channeldict)
 
         category_order = dictchannels.keys()
 
@@ -246,19 +259,19 @@ class IPTVSetup:
                         service_ref = "{:x}:{}:{}:0".format(num, cat_id[:4], cat_id[4:])
                         if panel_bouquet:
                             # check if we have the panels custom service ref
-                            pos = x['streamUrl'].rfind('/')
-                            if pos != -1 and (pos + 1 != len(x['streamUrl'])):
-                                m3u_stream_file = x['streamUrl'][pos + 1:]
+                            pos = x['stream-url'].rfind('/')
+                            if pos != -1 and (pos + 1 != len(x['stream-url'])):
+                                m3u_stream_file = x['stream-url'][pos + 1:]
                                 if m3u_stream_file in panel_bouquet:
                                     # have a match use the panels custom service ref
                                     service_ref = panel_bouquet[m3u_stream_file]
                         if not x['serviceRefOverride']:
                             # if service ref is not overridden in xml update
-                            x['serviceRef'] = "{}:0:1:{}:0:0:0".format(x['streamType'], service_ref)
+                            x['serviceRef'] = "{}:0:1:{}:0:0:0".format(x['stream-type'], service_ref)
                         num += 1
                 else:
                     for x in dictchannels[cat]:
-                        x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['streamType'], vod_service_id)
+                        x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['stream-type'], vod_service_id)
             while catstartnum < num:
                 catstartnum += category_offset
 
@@ -299,12 +312,12 @@ class IPTVSetup:
     def set_streamtypes_vodcats(self, channeldict, all_iptv_stream_types):
         """Set the stream types and VOD categories
         """
-        if (channeldict['streamUrl'].endswith('.ts') or channeldict['streamUrl'].endswith('.m3u8')) \
-                and not channeldict['category'].startswith('VOD'):
-            channeldict['streamType'] = '4097' if all_iptv_stream_types else '1'
+        if (channeldict['stream-url'].endswith('.ts') or channeldict['stream-url'].endswith('.m3u8')) \
+                and not channeldict['group-title'].startswith('VOD'):
+            channeldict['stream-type'] = '4097' if all_iptv_stream_types else '1'
         else:
-            channeldict['category'] = u"VOD - {}".format(channeldict['category'])
-            channeldict['streamType'] = "4097"
+            channeldict['group-title'] = u"VOD - {}".format(channeldict['group-title'])
+            channeldict['stream-type'] = "4097"
 
     def parse_map_bouquet_xml(self, dictchannels):
         """Check for a mapping override file and parses it if found
@@ -385,7 +398,7 @@ class IPTVSetup:
                     sortedchannels = []
                     listchannels = []
                     for x in dictchannels[cat]:
-                        listchannels.append(x['title'])
+                        listchannels.append(x['stream-name'])
                     for node in tree.findall(u'.//channel[@category="{}"]'.format(cat)):
                         sortedchannels.append(node.attrib.get('name'))
 
@@ -395,24 +408,24 @@ class IPTVSetup:
 
                     # sort the channels by new order
                     channel_order_dict = {channel: index for index, channel in enumerate(listchannels)}
-                    dictchannels[cat].sort(key=lambda x: channel_order_dict[x['title']])
+                    dictchannels[cat].sort(key=lambda x: channel_order_dict[x['stream-name']])
 
                     for x in dictchannels[cat]:
-                        node = tree.find(u'.//channel[@name="{}"]'.format(x['title']))
+                        node = tree.find(u'.//channel[@name="{}"]'.format(x['stream-name']))
                         if node is not None:
                             if node.attrib.get('enabled') == 'false':
                                 x['enabled'] = False
                             x['nameOverride'] = node.attrib.get('nameOverride', '')
                             # default to current values if attribute doesn't exist
-                            x['tvgId'] = node.attrib.get('tvg-id', x['tvgId'])
+                            x['tvg-id'] = node.attrib.get('tvg-id', x['tvg-id'])
                             if node.attrib.get('serviceRef', None) and not xcludesref:
                                 x['serviceRef'] = node.attrib.get('serviceRef', x['serviceRef'])
                                 x['serviceRefOverride'] = True
                             # streamUrl no longer output to xml file but we still check and process it
-                            x['streamUrl'] = node.attrib.get('streamUrl', x['streamUrl'])
+                            x['stream-url'] = node.attrib.get('streamUrl', x['stream-url'])
                             clear_stream_url = node.attrib.get('clearStreamUrl') == 'true'
                             if clear_stream_url:
-                                x['streamUrl'] = ''
+                                x['stream-url'] = ''
 
             print('custom channel order parsed...')
 
@@ -508,13 +521,13 @@ class IPTVSetup:
                         for x in dictchannels[cat]:                            
                             f.write('{}<channel name="{}" nameOverride="{}" tvg-id="{}" enabled="{}" category="{}" serviceRef="{}" clearStreamUrl="{}" />\r\n'
                                     .format(2 * indent,
-                                            self.xml_escape(x['title'].encode('utf-8')),
+                                            self.xml_escape(x['stream-name'].encode('utf-8')),
                                             self.xml_escape(x.get('nameOverride', '').encode('utf-8')),
-                                            self.xml_escape(x['tvgId'].encode('utf-8')),
+                                            self.xml_escape(x['tvg-id'].encode('utf-8')),
                                             str(x['enabled']).lower(),
                                             self.xml_escape(cat.encode('utf-8')),
                                             self.xml_escape(x['serviceRef']),
-                                            'false' if x['streamUrl'] else 'true'
+                                            'false' if x['stream-url'] else 'true'
                                             ))
 
             f.write('{}</channels>\r\n'.format(indent))
@@ -530,7 +543,7 @@ class IPTVSetup:
             if not cat.startswith('VOD'):
                 # Download Picon if not VOD
                 for x in dictchannels[cat]:
-                    self.download_picon_file(x['logoUrl'], self.get_service_title(x), iconpath)
+                    self.download_picon_file(x['tvg-logo'], self.get_service_title(x), iconpath)
         print("\nPicons download completed...")
         print("Box will need restarted for Picons to show...")
 
@@ -723,7 +736,7 @@ class IPTVSetup:
         """Add service to bouquet file
         """
         f.write("#SERVICE {}:{}:{}\n"
-                .format(channel['serviceRef'], channel['streamUrl']
+                .format(channel['serviceRef'], channel['stream-url']
                         .replace(":", "%3a"), self.get_service_title(channel).encode("utf-8")))
         f.write("#DESCRIPTION {}\n".format(self.get_service_title(channel).encode("utf-8")))
 
@@ -758,7 +771,7 @@ class IPTVSetup:
 
                         f.write('{}<!-- {} -->\n'.format(indent, self.xml_escape(cat_title.encode('utf-8'))))
                         for x in dictchannels[cat]:
-                            tvg_id = x['tvgId'] if x['tvgId'] else self.get_service_title(x)
+                            tvg_id = x['tvg-id'] if x['tvg-id'] else self.get_service_title(x)
                             if x['enabled']:
                                 f.write('{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
                                         .format(indent, self.xml_escape(tvg_id.encode('utf-8')), x['serviceRef'],
@@ -856,7 +869,7 @@ class IPTVSetup:
     def get_service_title(self, channel):
         """Return the title override if set else the title
         """
-        return channel['nameOverride'] if channel.get('nameOverride', False) else channel['title']
+        return channel['nameOverride'] if channel.get('nameOverride', False) else channel['stream-name']
 
     def get_category_title(self, cat, category_options):
         """Return the title override if set else the title
