@@ -23,9 +23,9 @@ IP6,http://ip6.spdemon.com:25461/get.php?username=USERNAME&password=PASSWORD&typ
 OHSERVICES,http://ohservices.ddns.net:5050/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ohservices.ddns.net:5050/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 SPOTON,http://stream.spotoniptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://stream.spotoniptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 REDALERT,http://redalert1973.ddns.net:4545/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://redalert1973.ddns.net:4545/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-NBIPTV,http://nbiptv.stablehq.co.uk:4545/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://nbiptv.stablehq.co.uk:4545/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+NBIPTV,http://nbiptv.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://nbiptv.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 D602IPTV,http://d602iptv.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://d602iptv.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 EPICSERVER,http://boxes.point2this.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://boxes.point2this.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-WHOBALLOO,http://mrmister.ddns..net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://mrmister.ddns..net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+WHOBALLOO,http://mrmister.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://mrmister.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 MONKEYIPTV,http://iptv.monkeyiptv.net:8000/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://iptv.monkeyiptv.net:8000/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 LIGHTNING,http://lightningiptv.tk:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://lightningiptv.tk:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
