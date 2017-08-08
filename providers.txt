@@ -16,7 +16,7 @@ UKSAT,http://highpteev.zapto.org:25461/get.php?username=USERNAME&password=PASSWO
 MEGA,http://whitelabel.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://whitelabel.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,3,1,5
 GHOST,http://ghosttechuk.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz,7,8,1,5
 QUICK,http://quickiptv.pro:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://quickiptv.pro:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-CKINGIPTV,http://ckingiptv.tk:8000/get.php?username=USERNAME&password=USERNAME&type=m3u_plus&output=ts,http://ckingiptv.tk:8000/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+CKINGIPTV,http://ckingiptv.tk:8000/get.php?username=USERNAME&password=USERNAME&type=m3u_plus&output=ts,http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz,7,8,1,5
 SATSNI,http://satsni.club:34656/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://satsni.club:34656/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 ELITE,http://ajsky.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ajsky.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 IP6,http://ip6.spdemon.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ip6.spdemon.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
@@ -29,3 +29,6 @@ EPICSERVER,http://boxes.point2this.com:25461/get.php?username=USERNAME&password=
 WHOBALLOO,http://mrmister.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://mrmister.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 MONKEYIPTV,http://iptv.monkeyiptv.net:8000/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://iptv.monkeyiptv.net:8000/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 LIGHTNING,http://lightningiptv.tk:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://lightningiptv.tk:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+PERFECTIPTV,http://perfectiptv.dtdns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://perfectiptv.dtdns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+PEARL,http://www.iptvpearl.com:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://www.iptvpearl.com:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+FHD,http://fhdstreams.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://fhdstreams.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
