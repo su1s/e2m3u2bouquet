@@ -1,4 +1,4 @@
-FAB,http://stream.fabiptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://stream.fabiptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+FAB,http://meowyapmeow.com:4745/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://meowyapmeow.com:4745/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 EPIC,http://epicstream.tv:7000/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://149.56.14.45:1000/guide.xml,7,8,1,5
 ULTIMATESPORTS,http://iptv.madnlooney.co.uk:80/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://iptv.madnlooney.co.uk:80/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 ACE,http://ace-tv.xyz:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ace-tv.xyz:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
@@ -32,5 +32,6 @@ LIGHTNING,http://lightningiptv.tk:8080/get.php?username=USERNAME&password=PASSWO
 PERFECTIPTV,http://perfectiptv.dtdns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://perfectiptv.dtdns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 PEARL,http://www.iptvpearl.com:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://www.iptvpearl.com:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 FHD,http://fhdstreams.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://fhdstreams.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-
 SLYK-IPTV,http://ss1.slykiptv.com:5005/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ss1.slykiptv.com:5005/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+SMIPTV,http://signatureiptv.stream:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://signatureiptv.stream:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
+VITAMIN,http://vip.superstreams.net:3222/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://vip.superstreams.net:3222/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
