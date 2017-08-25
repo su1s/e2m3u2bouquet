@@ -27,15 +27,16 @@ optional arguments:
   -M, --multivod        Create multiple VOD bouquets rather than single VOD
                         bouquet
   -a, --allbouquet      Create all channels bouquet
-  -b BOUQUET_URL, --bouqueturl BOUQUET_URL
-                        URL to download providers bouquet - to map custom
-                        service references  
   -P, --picons          Automatically download of Picons, this option will
                         slow the execution
   -q ICONPATH, --iconpath ICONPATH
                         Option path to store picons, if not supplied defaults
                         to /usr/share/enigma2/picon/
   -xs, --xcludesref     Disable service ref overriding from override.xml file
+  -b BOUQUET_URL, --bouqueturl BOUQUET_URL
+                        URL to download providers bouquet - to map custom
+                        service references
+  -bt, --bouquettop     Place IPTV bouquets at top   
   -U, --uninstall       Uninstall all changes made by this script
   -V, --version         show program's version number and exit
 
@@ -43,16 +44,8 @@ URL Based Setup:
   -m M3UURL, --m3uurl M3UURL
                         URL to download m3u data from (required)
   -e EPGURL, --epgurl EPGURL
-                        URL source for XML TV epg data sources
-  -d1 DELIMITER_CATEGORY, --delimiter_category DELIMITER_CATEGORY
-                        Delimiter (") count for category - default = 7
-  -d2 DELIMITER_TITLE, --delimiter_title DELIMITER_TITLE
-                        Delimiter (") count for title - default = 8
-  -d3 DELIMITER_TVGID, --delimiter_tvgid DELIMITER_TVGID
-                        Delimiter (") count for tvg_id - default = 1
-  -d4 DELIMITER_LOGOURL, --delimiter_logourl DELIMITER_LOGOURL
-                        Delimiter (") count for logourl - default = 5
-
+                        URL source for XML TV epg data sources  
+						
 Provider Based Setup:
   -n PROVIDERNAME, --providername PROVIDERNAME
                         Host IPTV provider name (FAB/EPIC) (required)
@@ -255,5 +248,14 @@ which makes editing the crontab easier)
 #### v0.6
 * Better m3u parsing
 * Plugin integration
+
+#### v0.6.1
+* Dedicated config directory '/etc/enigma2/e2m3u2bouquet'
+* Pre Python 2.7.9 SSL context workaround
+* Remove delimiter options
+* No longer uninstall on each run
+* Option to place IPTV bouquets at top or bottom '-bt'
+* Consistent channel numbering (best results when IPTV bouquets are set to top). Each new IPTV category
+  will start numbering +100 from start of last category
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
