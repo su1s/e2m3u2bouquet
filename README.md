@@ -36,6 +36,9 @@ optional arguments:
   -b BOUQUET_URL, --bouqueturl BOUQUET_URL
                         URL to download providers bouquet - to map custom
                         service references
+  -bd, --bouquetdownload
+                        Download providers bouquet (use default url) - to map
+                        custom service references
   -bt, --bouquettop     Place IPTV bouquets at top   
   -U, --uninstall       Uninstall all changes made by this script
   -V, --version         show program's version number and exit

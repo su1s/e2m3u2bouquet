@@ -32,7 +32,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.6.1'
 __date__ = '2017-06-04'
-__updated__ = '2017-08-25'
+__updated__ = '2017-08-26'
 
 DEBUG = 0
 TESTRUN = 0
@@ -945,7 +945,6 @@ class IPTVSetup:
             if os.path.isfile(path):
                 mapping_file = path
                 break;
-
         return mapping_file
 
     def xml_escape(self, string):
@@ -1033,6 +1032,8 @@ USAGE
                             help='Disable service ref overriding from override.xml file')
         parser.add_argument('-b', '--bouqueturl', dest='bouqueturl', action='store',
                             help='URL to download providers bouquet - to map custom service references')
+        parser.add_argument('-bd', '--bouquetdownload', dest='bouquetdownload', action='store_true',
+                            help='Download providers bouquet (use default url) - to map custom service references')
         parser.add_argument('-bt', '--bouquettop', dest='bouquettop', action='store_true',
                             help='Place IPTV bouquets at top')
         parser.add_argument('-U', '--uninstall', dest='uninstall', action='store_true',
@@ -1048,6 +1049,7 @@ USAGE
         multivod = args.multivod
         allbouquet = args.allbouquet
         bouquet_url = args.bouqueturl
+        bouquet_download = args.bouquetdownload
         picons = args.picons
         iconpath = args.iconpath
         xcludesref = args.xcludesref
@@ -1096,7 +1098,7 @@ USAGE
             os.makedirs(CFGPATH)
 
         # Work out provider based setup if that's what we have
-        if ((provider is not None) and (username is not None) or (password is not None)):
+        if (provider is not None) and (username is not None) or (password is not None):
             providersfile = e2m3uSetup.download_providers(PROVIDERSURL)
             e2m3uSetup.read_providers(providersfile)
             m3uurl, epgurl, supported_providers = e2m3uSetup.process_provider(
@@ -1105,6 +1107,14 @@ USAGE
                 print("----ERROR----")
                 print("Provider not found, supported providers = " + supported_providers)
                 sys(exit(1))
+
+        # get default provider bouquet download url if bouquet download set and no bouquet url given
+        if bouquet_download and not bouquet_url:
+            # set bouquet_url to default url
+            pos = m3uurl.find('get.php')
+            if pos != -1:
+                bouquet_url = m3uurl[0:pos + 7] + '?username={}&password={}&type=dreambox&output=ts'.format(
+                    username, password)
         # Download panel bouquet
         panel_bouquet = None
         if bouquet_url:
