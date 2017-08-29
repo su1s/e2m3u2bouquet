@@ -260,5 +260,10 @@ which makes editing the crontab easier)
 * Option to place IPTV bouquets at top or bottom '-bt'
 * Consistent channel numbering (best results when IPTV bouquets are set to top). Each new IPTV category
   will start numbering +100 from start of last category
+* [plugin] Add /picon option for download path
+* [plugin] Show last playlist update
+* [plugin] Add override service service refs' option
+* [plugin] Add IPTV bouquet position option
+* [plugin] Add option download providers bouquet (for custom service refs)
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
