@@ -895,7 +895,7 @@ class IPTVSetup:
             for source in sources:
                 f.write('{}<url>{}</url>\n'.format(3 * indent, self.xml_escape(source)))
             f.write('{}</source>\n'.format(2 * indent))
-            f.write('{}<sourcecat>\n'.format(indent))
+            f.write('{}</sourcecat>\n'.format(indent))
             f.write('</sources>\n')
 
     def read_providers(self,providerfile):
@@ -1147,7 +1147,8 @@ USAGE
         print("********************************")
         print("\nTo enable EPG data")
         print("Please open EPG-Importer plugin.. ")
-        print("Select sources and enable the new IPTV sources (will be listed as {})".format(provider))
+        print("Select sources and enable the new IPTV source")
+        print("(will be listed as {} under 'IPTV Bouquet Maker - E2m3u2bouquet')".format(provider))
         print("Save the selected sources, press yellow button to start manual import")
         print("You can then set EPG-Importer to automatically import the EPG every day")
 
