@@ -30,9 +30,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.6.1'
+__version__ = '0.6.2'
 __date__ = '2017-06-04'
-__updated__ = '2017-08-26'
+__updated__ = '2017-09-19'
 
 DEBUG = 0
 TESTRUN = 0
@@ -888,12 +888,14 @@ class IPTVSetup:
 
         with open(os.path.join(EPGIMPORTPATH, source_filename), "w+") as f:
             f.write('<sources>\n')
+            f.write('{}<sourcecat sourcecatname="IPTV Bouquet Maker - E2m3u2bouquet">\n'.format(indent))
             f.write('{}<source type="gen_xmltv" channels="{}">\n'
-                    .format(indent, channels_filename))
-            f.write('{}<description>{}</description>\n'.format(2 * indent, self.xml_escape(source_name)))
+                    .format(2 * indent, channels_filename))
+            f.write('{}<description>{}</description>\n'.format(3 * indent, self.xml_escape(source_name)))
             for source in sources:
-                f.write('{}<url>{}</url>\n'.format(2 * indent, self.xml_escape(source)))
-            f.write('{}</source>\n'.format(indent))
+                f.write('{}<url>{}</url>\n'.format(3 * indent, self.xml_escape(source)))
+            f.write('{}</source>\n'.format(2 * indent))
+            f.write('{}</sourcecat>\n'.format(indent))
             f.write('</sources>\n')
 
     def read_providers(self,providerfile):
@@ -1145,7 +1147,8 @@ USAGE
         print("********************************")
         print("\nTo enable EPG data")
         print("Please open EPG-Importer plugin.. ")
-        print("Select sources and enable the new IPTV sources (will be listed as {})".format(provider))
+        print("Select sources and enable the new IPTV source")
+        print("(will be listed as {} under 'IPTV Bouquet Maker - E2m3u2bouquet')".format(provider))
         print("Save the selected sources, press yellow button to start manual import")
         print("You can then set EPG-Importer to automatically import the EPG every day")
 
