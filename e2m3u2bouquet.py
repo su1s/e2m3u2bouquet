@@ -30,9 +30,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.6.2'
+__version__ = '0.6.3'
 __date__ = '2017-06-04'
-__updated__ = '2017-09-19'
+__updated__ = '2017-09-30'
 
 DEBUG = 0
 TESTRUN = 0
@@ -55,6 +55,10 @@ class CLIError(Exception):
 
     def __unicode__(self):
         return self.msg
+
+class AppUrlOpener(urllib.FancyURLopener):
+    """Set user agent for downloads"""
+    version = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
 
 class IPTVSetup:
     def __init__(self):
@@ -1086,6 +1090,7 @@ USAGE
         return 2
 
     # # Core program logic starts here
+    urllib._urlopener = AppUrlOpener()
     e2m3uSetup = IPTVSetup()
     if uninstall:
         # Clean up any existing files
