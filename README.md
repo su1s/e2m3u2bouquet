@@ -269,4 +269,7 @@ which makes editing the crontab easier)
 #### v0.6.2
 * Put epg-importer source in source cat for new epg-importer version
 
+#### v0.6.3
+* Set user agent for downloads
+
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
