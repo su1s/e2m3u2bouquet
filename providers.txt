@@ -1,19 +1,15 @@
-FAB,http://stream.fabiptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://stream.fabiptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 EPIC,http://epicstream.tv:7000/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://149.56.14.45:1000/guide.xml,7,8,1,5
 ULTIMATESPORTS,http://iptv.madnlooney.co.uk:80/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://iptv.madnlooney.co.uk:80/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 ACE,http://ace-tv.xyz:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ace-tv.xyz:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 POSH,http://poshiptv.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://poshiptv.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 FLAWLESS,http://flawless-iptv.net:4545/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=mpegts,http://flawless-iptv.net:4545/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 VSTREAMS,http://vstreams.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://vstreams.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-ROOT,http://root-iptv.is-found.org:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://root-iptv.is-found.org:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 SUPERSTREAMS,http://superstreams.tv:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=hls,http://superstreams.tv:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 SUPREMACY,http://supremacystreams.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://supremacystreams.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 PMC,http://service.the-pm.club/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://service.the-pm.club/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 2MIXIPTV,"http://2mickspl.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts","http://2mickspl.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD&action=get_simple_data_table&stream_id=X",7,8,1,5
 TINY,http://tinyiptv.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://tinyiptv.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 VADER,http://vaders.tv/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://vaders.tv/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-UKSAT,http://highpteev.zapto.org:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://highpteev.zapto.org:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-MEGA,http://whitelabel.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://whitelabel.ddns.net:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,3,1,5
 GHOST,http://ghosttechuk.ddns.net:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz,7,8,1,5
 QUICK,http://quickiptv.pro:8080/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://quickiptv.pro:8080/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 CKINGIPTV,http://ckingiptv.tk:8000/get.php?username=USERNAME&password=USERNAME&type=m3u_plus&output=ts,http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz,7,8,1,5
@@ -21,7 +17,6 @@ SATSNI,http://satsni.club:34656/get.php?username=USERNAME&password=PASSWORD&type
 ELITE,http://ajsky.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ajsky.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 IP6,http://ip6.spdemon.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ip6.spdemon.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 OHSERVICES,http://ohservices.ddns.net:5050/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://ohservices.ddns.net:5050/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
-SPOTON,http://stream.spotoniptv.com:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://stream.spotoniptv.com:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 REDALERT,http://redalert1973.ddns.net:4545/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://redalert1973.ddns.net:4545/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 NBIPTV,http://nbiptv.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://nbiptv.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
 D602IPTV,http://d602iptv.stablehq.co.uk:25461/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts,http://d602iptv.stablehq.co.uk:25461/xmltv.php?username=USERNAME&password=PASSWORD,7,8,1,5
