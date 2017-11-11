@@ -1073,9 +1073,12 @@ USAGE
             provider = "E2m3u2Bouquet"
         # Check we have enough to proceed
         if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)) and uninstall is False:
-            print('Please ensure correct command line options are passed to the program, for help use --help\n')
-            parser.print_usage()
-            sys.exit(1)
+            if file(CFGPATH+"config.xml"):
+                print("Config Based setup")
+            else:
+                print('Please ensure correct command line options are passed to the program, for help use --help\n')
+                parser.print_usage()
+                sys.exit(1)
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
