@@ -28,11 +28,13 @@ from collections import deque
 from xml.etree import ElementTree
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
+import e2m3u2bouquet
+
 
 __all__ = []
-__version__ = '0.6.3'
+__version__ = '0.7.0'
 __date__ = '2017-06-04'
-__updated__ = '2017-09-30'
+__updated__ = '2017-11-11'
 
 DEBUG = 0
 TESTRUN = 0
@@ -169,7 +171,7 @@ class IPTVSetup:
                 os.remove(panel_bouquet_file)
         return panel_bouquet
 
-    def parse_m3u(self, filename, all_iptv_stream_types, panel_bouquet, xcludesref):
+    def parse_m3u(self, filename, all_iptv_stream_types, panel_bouquet, xcludesref,providername):
         """core parsing routine"""
         # Extract and generate the following items from the m3u
         # group-title
@@ -234,13 +236,13 @@ class IPTVSetup:
         category_order = dictchannels.keys()
 
         # sort categories by custom order (if exists)
-        sorted_categories, category_options = self.parse_map_bouquet_xml(dictchannels)
+        sorted_categories, category_options = self.parse_map_bouquet_xml(dictchannels,providername)
         sorted_categories.extend(category_order)
         # remove duplicates, keep order
         category_order = OrderedDict((x, True) for x in sorted_categories).keys()
 
         # Check for and parse override map
-        self.parse_map_channels_xml(dictchannels, xcludesref)
+        self.parse_map_channels_xml(dictchannels, xcludesref,providername)
 
         # Add Service references
         # VOD won't have epg so use same service id for all VOD
@@ -263,7 +265,7 @@ class IPTVSetup:
                         category_options[cat] = {"idStart": num}
 
                     for x in dictchannels[cat]:
-                        cat_id = self.get_category_id(cat)
+                        cat_id = self.get_category_id(cat,providername)
                         service_ref = "{:x}:{}:{}:0".format(num, cat_id[:4], cat_id[4:])
                         if panel_bouquet:
                             # check if we have the panels custom service ref
@@ -327,12 +329,12 @@ class IPTVSetup:
             channeldict['group-title'] = u"VOD - {}".format(channeldict['group-title'])
             channeldict['stream-type'] = "4097"
 
-    def parse_map_bouquet_xml(self, dictchannels):
+    def parse_map_bouquet_xml(self, dictchannels,providername):
         """Check for a mapping override file and parses it if found
         """
         category_order = []
         category_options = {}
-        mapping_file = self.get_mapping_file()
+        mapping_file = self.get_mapping_file(providername)
         if mapping_file:
             print("\n----Parsing custom bouquet order----")
 
@@ -373,11 +375,11 @@ class IPTVSetup:
             print("custom bouquet order parsed...")
         return category_order, category_options
 
-    def parse_map_xmltvsources_xml(self):
+    def parse_map_xmltvsources_xml(self,providername):
         """Check for a mapping override file and parses it if found
         """
         list_xmltv_sources = {}
-        mapping_file = self.get_mapping_file()
+        mapping_file = self.get_mapping_file(providername)
         if mapping_file:
             with open(mapping_file, "r") as f:
                 tree = ElementTree.parse(f)
@@ -389,10 +391,10 @@ class IPTVSetup:
                     list_xmltv_sources[group_name] = urllist
         return list_xmltv_sources
 
-    def parse_map_channels_xml(self, dictchannels, xcludesref):
+    def parse_map_channels_xml(self, dictchannels, xcludesref,providername):
         """Check for a mapping override file and applies it if found
         """
-        mappingfile = self.get_mapping_file()
+        mappingfile = self.get_mapping_file(providername)
         if mappingfile:
             print("\n----Parsing custom channel order, please be patient----")
 
@@ -437,9 +439,9 @@ class IPTVSetup:
 
             print('custom channel order parsed...')
 
-    def save_map_xml(self, categoryorder, category_options, dictchannels, list_xmltv_sources):
+    def save_map_xml(self, categoryorder, category_options, dictchannels, list_xmltv_sources,providername):
         """Create mapping file"""
-        mappingfile = os.path.join(CFGPATH, 'e2m3u2bouquet-sort-current.xml')
+        mappingfile = os.path.join(CFGPATH, self.get_safe_filename(providername) + '-sort-current.xml')
         indent = "  "
         vod_category_output = False
 
@@ -451,7 +453,7 @@ class IPTVSetup:
                 f.write('{} Disable bouquets or channels by setting enabled to "false"\r\n'.format(indent))
                 f.write('{} Map DVB EPG to IPTV by changing channel serviceRef attribute to match DVB service reference\r\n'.format(indent))
                 f.write('{} Map XML EPG to different feed by changing channel tvg-id attribute\r\n'.format(indent))
-                f.write('{} Rename this file as e2m3u2bouquet-sort-override.xml for changes to apply\r\n'.format(indent))
+                f.write('{} Rename this file as providername-sort-override.xml for changes to apply\r\n'.format(indent))
                 f.write('-->\r\n')
 
                 f.write('<mapping>\r\n')
@@ -647,7 +649,7 @@ class IPTVSetup:
         name = name.lower()
         return name
 
-    def get_current_bouquet_indexes(self):
+    def get_current_bouquet_indexes(self,providername):
         """Get the bouquet indexes (ex iptv)
         """
         current_bouquets_indexes =[]
@@ -657,23 +659,23 @@ class IPTVSetup:
                 if line.startswith('#NAME'):
                     continue
                 else:
-                    if not '.suls_iptv_' in line:
+                    if not '.suls_iptv_'+self.get_safe_filename(providername) in line:
                         current_bouquets_indexes.append(line)
         return current_bouquets_indexes
 
-    def create_bouquets(self, category_order, category_options, dictchannels, multivod, allbouquet, bouquettop):
+    def create_bouquets(self, category_order, category_options, dictchannels, multivod, allbouquet, bouquettop,providername):
         """Create the Enigma2 bouquets
         """
         print("\n----Creating bouquets----")
         # clean old bouquets before writing new
         if dictchannels:
             for fname in os.listdir(ENIGMAPATH):
-                if 'userbouquet.suls_iptv_' in fname:
+                if 'userbouquet.suls_iptv_'+self.get_safe_filename(providername) in fname:
                     os.remove(os.path.join(ENIGMAPATH, fname))
         iptv_bouquet_list = []
 
         if allbouquet:
-            iptv_bouquet_list = self.create_all_channels_bouquet(category_order, category_options, dictchannels)
+            iptv_bouquet_list = self.create_all_channels_bouquet(category_order, category_options, dictchannels,providername)
 
         vod_categories = list(cat for cat in category_order if cat.startswith('VOD -'))
         vod_category_output = False
@@ -689,14 +691,14 @@ class IPTVSetup:
                 if cat in vod_categories and not multivod:
                     cat_filename = "VOD"
 
-                bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}.tv'
+                bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_' + self.get_safe_filename(providername) +'_{}.tv'
                                                 .format(cat_filename))
                 if DEBUG:
                     print("Creating: {}".format(bouquet_filepath))
 
                 if cat not in vod_categories or multivod:
                     with open(bouquet_filepath, "w+") as f:
-                        bouquet_name = 'IPTV - {}'.format(cat_title).decode("utf-8")
+                        bouquet_name = self.get_safe_filename(providername)+ ' - {}'.format(cat_title).decode("utf-8")
                         if not cat.startswith('VOD -'):
                             if cat in category_options and category_options[cat].get('nameOverride', False):
                                 bouquet_name = category_options[cat]['nameOverride'].decode('utf-8')
@@ -725,7 +727,7 @@ class IPTVSetup:
                 elif not vod_category_output and not multivod:
                     # not multivod - output all the vod services in one file
                     with open(bouquet_filepath, "w+") as f:
-                        bouquet_name = 'IPTV - VOD'.decode("utf-8")
+                        bouquet_name = self.get_safe_filename(providername) + ' - VOD'.decode("utf-8")
                         if 'VOD' in category_options and category_options['VOD'].get('nameOverride', False):
                             bouquet_name = category_options['VOD']['nameOverride'].decode('utf-8')
 
@@ -754,16 +756,16 @@ class IPTVSetup:
 
                 # Add to bouquet index list
                 if cat not in vod_categories or (cat in vod_categories and not vod_bouquet_entry_output):
-                    iptv_bouquet_list.append(self.get_bouquet_index_name(cat_filename))
+                    iptv_bouquet_list.append(self.get_bouquet_index_name(cat_filename,self.get_safe_filename(providername)))
                     if cat in vod_categories and not multivod:
                         vod_bouquet_entry_output = True
 
         # write the bouquets.tv indexes
-        self.save_bouquet_index_entries(iptv_bouquet_list, bouquettop)
+        self.save_bouquet_index_entries(iptv_bouquet_list, bouquettop,providername)
 
         print("bouquets created ...")
 
-    def create_all_channels_bouquet(self, category_order, category_options, dictchannels):
+    def create_all_channels_bouquet(self, category_order, category_options, dictchannels,providername):
         """Create the Enigma2 all channels bouquet
         """
         print("\n----Creating all channels bouquet----")
@@ -771,17 +773,17 @@ class IPTVSetup:
         bouquet_indexes = []
 
         vod_categories = list(cat for cat in category_order if cat.startswith('VOD -'))
-        bouquet_name = "All Channels"
+        bouquet_name = self.get_safe_filename(providername) + "All Channels"
         cat_filename = self.get_safe_filename(bouquet_name)
 
         # create file
-        bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}.tv'
+        bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_' + self.get_safe_filename(providername) + '_{}.tv'
                                         .format(cat_filename))
         if DEBUG:
             print("Creating: {}".format(bouquet_filepath))
 
         with open(bouquet_filepath, "w+") as f:
-            f.write("#NAME IPTV - {}\n".format(bouquet_name.encode("utf-8")))
+            f.write("#NAME " + providername + " - {}\n".format(bouquet_name.encode("utf-8")))
 
             # write place holder channels (for channel numbering)
             for i in xrange(100):
@@ -805,7 +807,7 @@ class IPTVSetup:
                             channel_num += 1
 
         # Add to bouquet index list
-        bouquet_indexes.append(self.get_bouquet_index_name(cat_filename))
+        bouquet_indexes.append(self.get_bouquet_index_name(cat_filename,self.get_safe_filename(providername)))
         print("all channels bouquet created ...")
         return bouquet_indexes
 
@@ -817,15 +819,15 @@ class IPTVSetup:
                         .replace(":", "%3a"), self.get_service_title(channel).encode("utf-8")))
         f.write("#DESCRIPTION {}\n".format(self.get_service_title(channel).encode("utf-8")))
 
-    def get_bouquet_index_name(self, filename):
-        return ('#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "userbouquet.suls_iptv_{}.tv" ORDER BY bouquet\n'
+    def get_bouquet_index_name(self, filename,providername):
+        return ('#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "userbouquet.suls_iptv_'+self.get_safe_filename(providername) +'_{}.tv" ORDER BY bouquet\n'
                 .format(filename))
 
-    def save_bouquet_index_entries(self, iptv_bouquets, bouquettop):
+    def save_bouquet_index_entries(self, iptv_bouquets, bouquettop,providername):
         """Add to the main bouquets.tv file
         """
         # get current bouquets indexes
-        current_bouquet_indexes = self.get_current_bouquet_indexes()
+        current_bouquet_indexes = self.get_current_bouquet_indexes(providername)
 
         if iptv_bouquets:
             with open(os.path.join(ENIGMAPATH, 'bouquets.tv'), 'w') as f:
@@ -854,7 +856,7 @@ class IPTVSetup:
         # create channels file
         if not os.path.isdir(EPGIMPORTPATH):
             os.makedirs(EPGIMPORTPATH)
-        channels_filename = os.path.join(EPGIMPORTPATH, 'suls_iptv_channels.xml')
+        channels_filename = os.path.join(EPGIMPORTPATH, 'suls_iptv_' + self.get_safe_filename(provider) + '_channels.xml')
 
         if dictchannels:
             with open(channels_filename, "w+") as f:
@@ -878,13 +880,13 @@ class IPTVSetup:
 
             # create epg-importer sources file for additional feeds
             for group in list_xmltv_sources:
-                self.create_epgimport_source(list_xmltv_sources[group], '{} - {}'.format(provider, group))
+                self.create_epgimport_source(list_xmltv_sources[group], '{} - {}'.format(provider, group),provider)
 
     def create_epgimport_source(self, sources, source_name):
         """Create epg-importer source file
         """
         indent = "  "
-        channels_filename = os.path.join(EPGIMPORTPATH, 'suls_iptv_channels.xml')
+        channels_filename = os.path.join(EPGIMPORTPATH, 'suls_iptv_' + self.get_safe_filename(source_name) + '_channels.xml')
 
         # write providers epg feed
         source_filename = os.path.join(EPGIMPORTPATH, 'suls_iptv_{}.sources.xml'
@@ -943,10 +945,10 @@ class IPTVSetup:
         # If we get here the supplied provider is invalid
         return "NOTFOUND", "", 0, 0, 0, 0, supported_providers
 
-    def get_mapping_file(self):
+    def get_mapping_file(self,providername):
         mapping_file = None
-        search_path = [os.path.join(CFGPATH, 'e2m3u2bouquet-sort-override.xml'),
-                       os.path.join(os.getcwd(), 'e2m3u2bouquet-sort-override.xml')]
+        search_path = [os.path.join(CFGPATH, self.get_safe_filename(providername) + '-sort-override.xml'),
+                       os.path.join(os.getcwd(), self.get_safe_filename(providername) + '-sort-override.xml')]
         for path in search_path:
             if os.path.isfile(path):
                 mapping_file = path
@@ -980,9 +982,91 @@ class IPTVSetup:
             return category_options[cat]['nameOverride'] if category_options[cat].get('nameOverride', False) else cat
         return cat
 
-    def get_category_id(self, cat):
+    def get_category_id(self, cat,providername):
         """Generate 32 bit category id to help make service refs unique"""
-        return hashlib.md5(cat).hexdigest()[:8]
+        return hashlib.md5(providername+ cat).hexdigest()[:8]
+
+class config:
+
+    def makeconfig(self,configfile):
+        print('Default configuration file created in '+ CFGPATH + 'config.xml\n')
+
+        f= open(configfile, "w+")
+        f.write("""<!-- E2m3u2bouquet supplier config file --> 
+<!-- Add as many suppliers as required and run the script with no parameters --> 
+<!-- this config file will be used and the relevant bouquets set up for all suppliers entered --> 
+<!-- 0 = No/false --> 
+<!-- 1 = Yes/true --> 
+<config>
+	<supplier>
+		<name>Supplier Name</name> <!-- Supplier Name -->
+		<enabled>1</enabled> <!-- Enable or disable the supplier (0 or 1) -->
+		<m3uurl><![CDATA[http://address.yourprovider.com:80/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts]]></m3uurl> <!-- Extended M3U URL including your username and password -->
+		<epgurl><![CDATA[http://address.yourprovider.com:80/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD]]></epgurl> <!-- XML EPG URL including your username and password -->
+		<iptvtypes>0</iptvtypes> <!-- Change all streams to IPTV type (0 or 1) -->
+		<multivod>0</multivod> <!-- Split VOD into seperate categories (0 or 1) -->
+		<allbouquet>1</allbouquet> <!-- Create all channels bouquet -->
+		<picons>0</picons> <!-- Automatically download Picons (0 or 1) -->
+		<iconpath>/usr/share/enigma2/picon/</iconpath> <!-- Location to store picons -->
+		<xcludesref>0</xcludesref> <!-- Disable service ref overriding from override.xml file (0 or 1) -->
+		<bouqueturl></bouqueturl> <!-- URL to download providers bouquet - to map custom service references --> 
+		<bouquetdownload>0</bouquetdownload> <!-- Download providers bouquet (use default url) - to map custom service references -->
+		<bouquettop>0</bouquettop> <!-- Place IPTV bouquets at top (0 or 1)-->
+	</supplier>
+	<supplier>	 
+		<name>Supplier Name</name> <!-- Supplier Name -->
+		<enabled>0</enabled> <!-- Enable or disable the supplier (0 or 1) -->
+		<m3uurl><![CDATA[http://address.yourprovider.com:80/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts]]></m3uurl> <!-- Extended M3U URL including your username and password -->
+		<epgurl><![CDATA[http://address.yourprovider.com:80/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD]]></epgurl> <!-- XML EPG URL including your username and password -->
+		<iptvtypes>0</iptvtypes> <!-- Change all streams to IPTV type (0 or 1) -->
+		<multivod>0</multivod> <!-- Split VOD into seperate categories (0 or 1) -->
+		<allbouquet>1</allbouquet> <!-- Create all channels bouquet -->
+		<picons>0</picons> <!-- Automatically download Picons (0 or 1) -->
+		<iconpath>/usr/share/enigma2/picon/</iconpath> <!-- Location to store picons -->
+		<xcludesref>0</xcludesref> <!-- Disable service ref overriding from override.xml file (0 or 1) -->
+		<bouqueturl></bouqueturl> <!-- URL to download providers bouquet - to map custom service references --> 
+		<bouquetdownload>0</bouquetdownload> <!-- Download providers bouquet (use default url) - to map custom service references -->
+		<bouquettop>0</bouquettop> <!-- Place IPTV bouquets at top (0 or 1)--> 
+	</supplier>
+</config>""")
+
+    def readconfig(self,configfile):
+        suppliers = []
+        with open(configfile, "r") as f:
+            tree = ElementTree.parse(f)
+            for node in tree.findall(".//supplier"):
+                supplier = {}
+                for child in node:
+                    if (DEBUG == 1) or (TESTRUN == 1):
+                        print(child.tag + " = " + str("" if child.text is None else child.text))
+                    supplier[child.tag] = str("" if child.text is None else child.text)
+                suppliers.append(supplier)
+        return suppliers
+
+    def run_e2m3u2bouquet(self,provider):
+        # Build up our args
+        newargs = []
+        newargs.append('-n={}'.format(provider["name"]))
+        newargs.append('-m={}'.format(provider["m3uurl"]))
+        newargs.append('-e={}'.format(provider["epgurl"]))
+        if provider["iptvtypes"]=="1":
+            newargs.append('-i')
+        if provider["multivod"]=="1":
+            newargs.append('-M')
+        if provider["allbouquet"]=="1":
+            newargs.append('-a')
+        if provider["picons"]=="1":
+            newargs.append('-P')
+            newargs.append('-q={}'.format(provider["iconpath"]))
+        if provider["xcludesref"]=="1":
+            newargs.append('-xs')
+        if provider["bouquettop"]=="1":
+            newargs.append('-bt')
+        if provider["bouquetdownload"]=="1":
+            newargs.append('-bd')
+            newargs.append('-b={}'.format(provider["bouqueturl"]))
+        # Recall ourselves
+        main(newargs)
 
 def main(argv=None):  # IGNORE:C0111
     # Command line options.
@@ -1073,9 +1157,32 @@ USAGE
             provider = "E2m3u2Bouquet"
         # Check we have enough to proceed
         if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)) and uninstall is False:
-            print('Please ensure correct command line options are passed to the program, for help use --help\n')
-            parser.print_usage()
-            sys.exit(1)
+            print('\n********************************')
+            print('E2m3u2bouquet - Config based setup')
+            print("********************************\n")
+            configs = config()
+            if os.path.isfile(CFGPATH+"config.xml"):
+                supplierslist = configs.readconfig(CFGPATH+"config.xml")
+                for supplier in supplierslist:
+                    if supplier["enabled"]=="1":
+                        if supplier["name"]=="Supplier Name":
+                            print("Please enter your details in the supplier config file in - " + CFGPATH+"config.xml")
+                            sys.exit(2)
+                        else:
+                            print('\n********************************')
+                            print('Config based setup - '+ supplier["name"])
+                            print("********************************\n")
+                            configs.run_e2m3u2bouquet(supplier)
+                    else:
+                        print("\nSupplier: "+supplier["name"] + " is disabled - skipping.........\n")
+                sys.exit(0)
+            else:
+                configs.makeconfig(CFGPATH+"config.xml")
+                print('Please ensure correct command line options are passed to the program \n'
+                      'or populate the config file in ' + CFGPATH + "config.xml \n" +
+                      'for help use --help\n')
+                parser.print_usage()
+                sys.exit(1)
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
@@ -1131,16 +1238,16 @@ USAGE
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
         categoryorder, category_options, dictchannels = e2m3uSetup.parse_m3u(m3ufile, iptvtypes, panel_bouquet,
-                                                                             xcludesref)
-        list_xmltv_sources = e2m3uSetup.parse_map_xmltvsources_xml()
+                                                                             xcludesref,provider)
+        list_xmltv_sources = e2m3uSetup.parse_map_xmltvsources_xml(provider)
         # save xml mapping - should be after m3u parsing
-        e2m3uSetup.save_map_xml(categoryorder, category_options, dictchannels, list_xmltv_sources)
+        e2m3uSetup.save_map_xml(categoryorder, category_options, dictchannels, list_xmltv_sources,provider)
 
         #download picons
         if picons:
             e2m3uSetup.download_picons(dictchannels, iconpath)
         # Create bouquet files
-        e2m3uSetup.create_bouquets(categoryorder, category_options, dictchannels, multivod, allbouquet, bouquettop)
+        e2m3uSetup.create_bouquets(categoryorder, category_options, dictchannels, multivod, allbouquet, bouquettop,provider)
         # Now create custom channels for each bouquet
         print("\n----Creating EPG-Importer config ----")
         e2m3uSetup.create_epgimporter_config(categoryorder, category_options, dictchannels, list_xmltv_sources, epgurl, provider)
