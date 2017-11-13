@@ -265,7 +265,7 @@ class IPTVSetup:
                         category_options[cat] = {"idStart": num}
 
                     for x in dictchannels[cat]:
-                        cat_id = self.get_category_id(cat)
+                        cat_id = self.get_category_id(cat,providername)
                         service_ref = "{:x}:{}:{}:0".format(num, cat_id[:4], cat_id[4:])
                         if panel_bouquet:
                             # check if we have the panels custom service ref
@@ -675,7 +675,7 @@ class IPTVSetup:
         iptv_bouquet_list = []
 
         if allbouquet:
-            iptv_bouquet_list = self.create_all_channels_bouquet(category_order, category_options, dictchannels)
+            iptv_bouquet_list = self.create_all_channels_bouquet(category_order, category_options, dictchannels,providername)
 
         vod_categories = list(cat for cat in category_order if cat.startswith('VOD -'))
         vod_category_output = False
@@ -807,7 +807,7 @@ class IPTVSetup:
                             channel_num += 1
 
         # Add to bouquet index list
-        bouquet_indexes.append(self.get_bouquet_index_name(cat_filename))
+        bouquet_indexes.append(self.get_bouquet_index_name(cat_filename,self.get_safe_filename(providername)))
         print("all channels bouquet created ...")
         return bouquet_indexes
 
@@ -982,13 +982,15 @@ class IPTVSetup:
             return category_options[cat]['nameOverride'] if category_options[cat].get('nameOverride', False) else cat
         return cat
 
-    def get_category_id(self, cat):
+    def get_category_id(self, cat,providername):
         """Generate 32 bit category id to help make service refs unique"""
-        return hashlib.md5(cat).hexdigest()[:8]
+        return hashlib.md5(providername+ cat).hexdigest()[:8]
 
 class config:
 
     def makeconfig(self,configfile):
+        print('Default configuration file created in '+ CFGPATH + 'config.xml\n')
+
         f= open(configfile, "w+")
         f.write("""<!-- E2m3u2bouquet supplier config file --> 
 <!-- Add as many suppliers as required and run the script with no parameters --> 
@@ -998,8 +1000,24 @@ class config:
 <config>
 	<supplier>
 		<name>Supplier Name</name> <!-- Supplier Name -->
-		<m3uurl>http://address.yourprovider.com:80/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts</m3uurl> <!-- Extended M3U URL including your username and password -->
-		<epgurl>http://address.yourprovider.com:80/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD</epgurl> <!-- XML EPG URL including your username and password -->
+		<enabled>1</enabled> <!-- Enable or disable the supplier (0 or 1) -->
+		<m3uurl><![CDATA[http://address.yourprovider.com:80/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts]]></m3uurl> <!-- Extended M3U URL including your username and password -->
+		<epgurl><![CDATA[http://address.yourprovider.com:80/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD]]></epgurl> <!-- XML EPG URL including your username and password -->
+		<iptvtypes>0</iptvtypes> <!-- Change all streams to IPTV type (0 or 1) -->
+		<multivod>0</multivod> <!-- Split VOD into seperate categories (0 or 1) -->
+		<allbouquet>1</allbouquet> <!-- Create all channels bouquet -->
+		<picons>0</picons> <!-- Automatically download Picons (0 or 1) -->
+		<iconpath>/usr/share/enigma2/picon/</iconpath> <!-- Location to store picons -->
+		<xcludesref>0</xcludesref> <!-- Disable service ref overriding from override.xml file (0 or 1) -->
+		<bouqueturl></bouqueturl> <!-- URL to download providers bouquet - to map custom service references --> 
+		<bouquetdownload>0</bouquetdownload> <!-- Download providers bouquet (use default url) - to map custom service references -->
+		<bouquettop>0</bouquettop> <!-- Place IPTV bouquets at top (0 or 1)-->
+	</supplier>
+	<supplier>	 
+		<name>Supplier Name</name> <!-- Supplier Name -->
+		<enabled>0</enabled> <!-- Enable or disable the supplier (0 or 1) -->
+		<m3uurl><![CDATA[http://address.yourprovider.com:80/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts]]></m3uurl> <!-- Extended M3U URL including your username and password -->
+		<epgurl><![CDATA[http://address.yourprovider.com:80/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD]]></epgurl> <!-- XML EPG URL including your username and password -->
 		<iptvtypes>0</iptvtypes> <!-- Change all streams to IPTV type (0 or 1) -->
 		<multivod>0</multivod> <!-- Split VOD into seperate categories (0 or 1) -->
 		<allbouquet>1</allbouquet> <!-- Create all channels bouquet -->
@@ -1014,17 +1032,7 @@ class config:
 
     def readconfig(self,configfile):
         suppliers = []
-        # replace & with &amp; in a temp file and parse that as it will be easier than the support back lash
-        # of explaining &amp; in XML data
-        f = open(configfile, "r")
-        tempfile = configfile.replace("xml","tmp")
-        t = open(tempfile,"w+")
-        for line in f:
-            t.write(line.replace("&","&amp;"))
-        f.close()
-        t.close()
-        # Now parse the config from the temp file
-        with open(tempfile, "r") as f:
+        with open(configfile, "r") as f:
             tree = ElementTree.parse(f)
             for node in tree.findall(".//supplier"):
                 supplier = {}
@@ -1033,7 +1041,6 @@ class config:
                         print(child.tag + " = " + str("" if child.text is None else child.text))
                     supplier[child.tag] = str("" if child.text is None else child.text)
                 suppliers.append(supplier)
-        os.remove(tempfile)
         return suppliers
 
     def run_e2m3u2bouquet(self,provider):
@@ -1042,20 +1049,20 @@ class config:
         newargs.append('-n={}'.format(provider["name"]))
         newargs.append('-m={}'.format(provider["m3uurl"]))
         newargs.append('-e={}'.format(provider["epgurl"]))
-        if provider["iptvtypes"]==1:
+        if provider["iptvtypes"]=="1":
             newargs.append('-i')
-        if provider["multivod"]==1:
+        if provider["multivod"]=="1":
             newargs.append('-M')
-        if provider["allbouquet"]==1:
+        if provider["allbouquet"]=="1":
             newargs.append('-a')
-        if provider["picons"]==1:
+        if provider["picons"]=="1":
             newargs.append('-P')
             newargs.append('-q={}'.format(provider["iconpath"]))
-        if provider["xcludesref"]==1:
+        if provider["xcludesref"]=="1":
             newargs.append('-xs')
-        if provider["bouquettop"]==1:
+        if provider["bouquettop"]=="1":
             newargs.append('-bt')
-        if provider["bouquetdownload"]==1:
+        if provider["bouquetdownload"]=="1":
             newargs.append('-bd')
             newargs.append('-b={}'.format(provider["bouqueturl"]))
         # Recall ourselves
@@ -1150,22 +1157,30 @@ USAGE
             provider = "E2m3u2Bouquet"
         # Check we have enough to proceed
         if (m3uurl is None) and ((provider is None) or (username is None) or (password is None)) and uninstall is False:
+            print('\n********************************')
+            print('E2m3u2bouquet - Config based setup')
+            print("********************************\n")
             configs = config()
             if os.path.isfile(CFGPATH+"config.xml"):
-                print("Config Based setup")
                 supplierslist = configs.readconfig(CFGPATH+"config.xml")
                 for supplier in supplierslist:
-                    if supplier["name"]=="Supplier Name":
-                        print("Please enter your details in the supplier config file in - " + CFGPATH+"config.xml")
-                        sys.exit(2)
+                    if supplier["enabled"]=="1":
+                        if supplier["name"]=="Supplier Name":
+                            print("Please enter your details in the supplier config file in - " + CFGPATH+"config.xml")
+                            sys.exit(2)
+                        else:
+                            print('\n********************************')
+                            print('Config based setup - '+ supplier["name"])
+                            print("********************************\n")
+                            configs.run_e2m3u2bouquet(supplier)
                     else:
-                        configs.run_e2m3u2bouquet(supplier)
-
-
+                        print("\nSupplier: "+supplier["name"] + " is disabled - skipping.........\n")
                 sys.exit(0)
             else:
                 configs.makeconfig(CFGPATH+"config.xml")
-                print('Please ensure correct command line options are passed to the program or populate the config file in ' + CFGPATH + "config.xml" + ', for help use --help\n')
+                print('Please ensure correct command line options are passed to the program \n'
+                      'or populate the config file in ' + CFGPATH + "config.xml \n" +
+                      'for help use --help\n')
                 parser.print_usage()
                 sys.exit(1)
 
