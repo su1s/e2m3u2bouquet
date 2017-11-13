@@ -101,7 +101,7 @@ Run the script passing the url for your m3u file and the url for your providers 
 
 If you are with a different provider the script should work but you will obviously need the m3u url (1st parameter) and XML TV url (2nd parameter) for your own provider. Please note the m3u file needs to be the “extended” version if you have the option.
 
-## URL Based Setup
+## Config File Setup
 No parameters required, just run the script
 ```
 ./e2m3u2bouquet.py
