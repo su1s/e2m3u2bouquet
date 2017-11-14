@@ -56,6 +56,12 @@ Provider Based Setup:
                         Your IPTV username (required)
   -p PASSWORD, --password PASSWORD
                         Your IPTV password (required)
+Config file based setup
+                        No parameters required
+                        The script will create a default config file
+                        first time it is run, IPTV providers details
+                        need to be entered into this file before
+                        running the script again
 ```
 
 ## Pre Requisites
@@ -69,11 +75,11 @@ opkg install python-image python-imaging python-argparse
 ```
 
 ## How to install
-* FTP the e2m3u2bouquet.py to your engima2 box (i would suggest to /home/root)
+* FTP the e2m3u2bouquet.py to your engima2 box (i would suggest to /etc/enigma2/e2m3u2bouquet)
 * SSH to your enigma2 box (using putty or something similar)
 * CD to the correct directory if you are not already there
 ```
-cd /home/root
+cd /etc/enigma2/e2m3u2bouquet
 ```
 * Make script executable
 ```
@@ -94,6 +100,16 @@ Run the script passing the url for your m3u file and the url for your providers 
 **NB: you need to replace the username and password values X 2**
 
 If you are with a different provider the script should work but you will obviously need the m3u url (1st parameter) and XML TV url (2nd parameter) for your own provider. Please note the m3u file needs to be the “extended” version if you have the option.
+
+## Config File Setup
+No parameters required, just run the script
+```
+./e2m3u2bouquet.py
+```
+The script will create a default config.xml file in /etc/enigma2/e2m3u2bouquet the first time it is run
+IPTV providers details need to be entered into this file before running the script again
+
+Note: Multiple IPTV providers can be supported via the config.xml
 
 ## For Picon Download Support
 Add -P and optionally -q /path/to/picon/folder/ if you don’t store your picons in the default location. The default location
@@ -144,11 +160,15 @@ crontab -e
 Once open press i to switch to INSERT mode enter the following (retype or ctrl-v to paste)
 This will automatically run the script at 06:00 & 18:00 every day
 ```
-0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
+0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
 ```
 or
 ```
-0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
+0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
+```
+or
+```
+0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py
 ```
 Press ESC follwed by :wq to exit the cron editor and save the entry
 You can check the entry with the command below
@@ -183,20 +203,20 @@ which makes editing the crontab easier)
 
 ## Change notes
 #### v0.1
-* Initial version (Dave Sully)
+* Initial version
 #### v0.2
-* Updated to use providers epg, doesn't need reboot to take effect - so could be scheduled from cron job (Doug MacKay)
+* Updated to use providers epg, doesn't need reboot to take effect - so could be scheduled from cron job
 #### v0.3
-* Complete restructure of the code base to some thing more usable going forward, incorporated Dougs changes to EPG data source  (Dave Sully)
+* Complete restructure of the code base to some thing more usable going forward, incorporated Dougs changes to EPG data source
 * tvg-id now included in the channels
-* better parsing of m3u data (Doug MacKay)
+* better parsing of m3u data
 * downloads m3u file from url
 * sets custom source to providers xml tv feed (as per Dougs v0.2)
 * fixed IPTV streams not playing / having incorrect stream type
 * option to make all streams IPTV type
 * option to split VOD bouquets by initial category
 * all parameters arg based so in theory works for other providers and can be croned
-* auto reloads bouquets (Doug MacKay)
+* auto reloads bouquets
 * debug \ testrun modes
 #### v0.4
 * Restructure (again) of code base to bring in some of dougs better structures
@@ -271,5 +291,9 @@ which makes editing the crontab easier)
 
 #### v0.6.3
 * Set user agent for downloads
+
+#### v0.7
+* Added Config file based setup support
+* Support for multiple service providers
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
