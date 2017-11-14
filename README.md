@@ -79,7 +79,7 @@ opkg install python-image python-imaging python-argparse
 * SSH to your enigma2 box (using putty or something similar)
 * CD to the correct directory if you are not already there
 ```
-cd /home/root
+cd /etc/enigma2/e2m3u2bouquet
 ```
 * Make script executable
 ```
@@ -160,11 +160,15 @@ crontab -e
 Once open press i to switch to INSERT mode enter the following (retype or ctrl-v to paste)
 This will automatically run the script at 06:00 & 18:00 every day
 ```
-0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
+0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
 ```
 or
 ```
-0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
+0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
+```
+or
+```
+0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py
 ```
 Press ESC follwed by :wq to exit the cron editor and save the entry
 You can check the entry with the command below
