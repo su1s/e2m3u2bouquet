@@ -296,4 +296,8 @@ which makes editing the crontab easier)
 * Added Config file based setup support
 * Support for multiple service providers
 
+#### v0.7.1
+* Make sure comments are xml safe
+* Minor fixes & tidy
+
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
