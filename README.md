@@ -298,6 +298,9 @@ which makes editing the crontab easier)
 
 #### v0.7.1
 * Make sure comments are xml safe
+* Extract username and password from m3u url if they are not passed in
+* Set services to stream type '1' in epg config so that the epg can be imported if
+  serviceapp is overriding stream type '4097' to exteplayer3 
 * Minor fixes & tidy
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script

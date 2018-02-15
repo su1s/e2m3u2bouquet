@@ -16,6 +16,7 @@ import re
 import unicodedata
 import datetime
 import urllib
+import urlparse
 import imghdr
 import tempfile
 import glob
@@ -35,7 +36,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.7.1'
 __date__ = '2017-06-04'
-__updated__ = '2018-02-11'
+__updated__ = '2018-02-14'
 
 DEBUG = 0
 TESTRUN = 0
@@ -141,11 +142,11 @@ class IPTVSetup:
         filename = os.path.join(path, 'userbouquet.panel.tv')
         print("\n----Downloading providers bouquet file----")
         if DEBUG:
-            print("bouqueturl = {}".format(url))
+           print("bouqueturl = {}".format(url))
         try:
-            urllib.urlretrieve(url, filename)
+           urllib.urlretrieve(url, filename)
         except Exception, e:
-            raise e
+           raise e
         return filename
 
     def parse_panel_bouquet(self, panel_bouquet_file):
@@ -381,14 +382,13 @@ class IPTVSetup:
         list_xmltv_sources = {}
         mapping_file = self.get_mapping_file(providername)
         if mapping_file:
-            with open(mapping_file, "r") as f:
-                tree = ElementTree.parse(f)
-                for group in tree.findall('.//xmltvextrasources/group'):
-                    group_name = group.attrib.get('id')
-                    urllist = []
-                    for url in group:
-                        urllist.append(url.text)
-                    list_xmltv_sources[group_name] = urllist
+            tree = ET.ElementTree(file=mapping_file)
+            for group in tree.findall('.//xmltvextrasources/group'):
+                group_name = group.attrib.get('id')
+                urllist = []
+                for url in group:
+                    urllist.append(url.text)
+                list_xmltv_sources[group_name] = urllist
         return list_xmltv_sources
 
     def parse_map_channels_xml(self, dictchannels, xcludesref, providername):
@@ -398,7 +398,7 @@ class IPTVSetup:
         if mappingfile:
             print("\n----Parsing custom channel order, please be patient----")
 
-            tree = ET.ElementTree(mappingfile)
+            tree = ET.ElementTree(file=mappingfile)
             for cat in dictchannels:
                 if not cat.startswith("VOD"):
                     # We don't override any individual VOD streams
@@ -916,8 +916,13 @@ class IPTVSetup:
                             for x in dictchannels[cat]:
                                 tvg_id = x['tvg-id'] if x['tvg-id'] else self.get_service_title(x)
                                 if x['enabled']:
+                                    # force the epg channels to stream type '1'
+                                    epg_service_ref = x['serviceRef']
+                                    pos = epg_service_ref.find(':')
+                                    if pos != -1:
+                                        epg_service_ref = '1{}'.format(epg_service_ref[pos:])
                                     f.write('{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
-                                            .format(indent, self.xml_escape(tvg_id.encode('utf-8')), x['serviceRef'],
+                                            .format(indent, self.xml_escape(tvg_id.encode('utf-8')), epg_service_ref,
                                                     self.xml_safe_comment(self.xml_escape(self.get_service_title(x).encode('utf-8')))))
                 f.write('</channels>\n')
 
@@ -992,6 +997,19 @@ class IPTVSetup:
                     supported_providers
         # If we get here the supplied provider is invalid
         return "NOTFOUND", "", supported_providers
+
+    def extract_user_details_from_url(self, url):
+        username = None
+        password = None
+        if url:
+            parsed = urlparse.urlparse(url)
+            username_param = urlparse.parse_qs(parsed.query).get('username')
+            if username_param:
+                username = username_param[0]
+            password_param = urlparse.parse_qs(parsed.query).get('password')
+            if password_param:
+                password = password_param[0]
+        return username, password
 
     def get_mapping_file(self, providername):
         mapping_file = None
@@ -1291,6 +1309,10 @@ USAGE
                 print("----ERROR----")
                 print("Provider not found, supported providers = " + supported_providers)
                 sys(exit(1))
+
+        # If no username or password supplied extract them from m3uurl
+        if (username is None) or (password is None):
+            username, password = e2m3uSetup.extract_user_details_from_url(m3uurl)
 
         # get default provider bouquet download url if bouquet download set and no bouquet url given
         if bouquet_download and not bouquet_url:
