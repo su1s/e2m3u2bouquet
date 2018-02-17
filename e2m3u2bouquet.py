@@ -36,7 +36,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.7.1'
 __date__ = '2017-06-04'
-__updated__ = '2018-02-14'
+__updated__ = '2018-02-17'
 
 DEBUG = 0
 TESTRUN = 0
@@ -192,6 +192,8 @@ class IPTVSetup:
 
         category_order = []
         category_options = {}
+        channeldict = {}
+
         dictchannels = OrderedDict()
         with open(filename, "r") as f:
             for line in f:
@@ -205,6 +207,8 @@ class IPTVSetup:
                                    'serviceRef': '',
                                    'serviceRefOverride': False
                                    }
+                    if line.find('tvg-') == -1 :
+                        raise Exception("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
                     channel = line.split('"')
                     # strip unwanted info at start of line
                     pos = channel[0].find(' ')
@@ -222,12 +226,11 @@ class IPTVSetup:
                     # Set default name for any blank groups
                     if channeldict['group-title'] == '':
                         channeldict['group-title'] = u'None'
-
-                    if not (channeldict['tvg-id'] or channeldict['group-title']):
-                        raise Exception("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
                 elif 'http:' in line:
+                    if 'tvg-id' not in channeldict:
+                        # if this is the true the playlist had a http line but not EXTINF
+                        raise Exception("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
                     channeldict['stream-url'] = line.strip()
-
                     self.set_streamtypes_vodcats(channeldict, all_iptv_stream_types)
 
                     if channeldict['group-title'] not in dictchannels:
@@ -662,7 +665,6 @@ class IPTVSetup:
             except Exception, e:
                 if DEBUG:
                     print(e)
-            pass
 
     def get_picon_name(self, serviceName):
         """Convert the service name to a Picon Service Name
@@ -1119,7 +1121,6 @@ class config:
                 supplier[child.tag] = '' if child.text is None else child.text.strip()
             if 'name' in supplier:
                 suppliers[supplier['name']] = supplier
-
         return suppliers
 
     def run_e2m3u2bouquet(self, provider):
