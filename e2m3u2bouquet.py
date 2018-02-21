@@ -30,13 +30,17 @@ try:
     import xml.etree.cElementTree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
+try:
+    from enigma import eDVBDB
+except ImportError:
+    eDVBDB = None
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
 __version__ = '0.7.1'
 __date__ = '2017-06-04'
-__updated__ = '2018-02-17'
+__updated__ = '2018-02-20'
 
 DEBUG = 0
 TESTRUN = 0
@@ -47,6 +51,7 @@ CFGPATH = os.path.join(ENIGMAPATH, 'e2m3u2bouquet/')
 PICONSPATH = '/usr/share/enigma2/picon/'
 PROVIDERS = {}
 PROVIDERSURL = 'https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/providers.enc'
+IMPORTED = False
 
 class CLIError(Exception):
     """Generic exception to raise and log different fatal errors."""
@@ -619,8 +624,10 @@ class IPTVSetup:
                     print('PiconURL: {}'.format(logourl))
                 else:
                     # Output some kind of progress indicator
-                    sys.stdout.write('.')
-                    sys.stdout.flush()
+                    if not IMPORTED:
+                        # don't output when called from the plugin
+                        sys.stdout.write('.')
+                        sys.stdout.flush()
                 try:
                     urllib.urlretrieve(logourl, piconfilepath)
                 except Exception, e:
@@ -894,8 +901,12 @@ class IPTVSetup:
     def reload_bouquets(self):
         if not TESTRUN:
             print("\n----Reloading bouquets----")
-            os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=2 > /dev/null 2>&1 &")
-            print("bouquets reloaded...")
+            if eDVBDB:
+                eDVBDB.getInstance().reloadBouquets()
+                print("bouquets reloaded...")
+            else:
+                os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=2 > /dev/null 2>&1 &")
+                print("bouquets reloaded...")
 
     def create_epgimporter_config(self, categoryorder, category_options, dictchannels, list_xmltv_sources, epgurl, provider):
         indent = "  "
@@ -1358,10 +1369,11 @@ USAGE
         print("You can then set EPG-Importer to automatically import the EPG every day")
 
 if __name__ == "__main__":
-    # if DEBUG:
     if TESTRUN:
         EPGIMPORTPATH = "H:/Satelite Stuff/epgimport/"
         ENIGMAPATH = "H:/Satelite Stuff/enigma2/"
         PICONSPATH = "H:/Satelite Stuff/picons/"
         CFGPATH = os.path.join(ENIGMAPATH, 'e2m3u2bouquet/')
     sys.exit(main())
+else:
+    IMPORTED = True
