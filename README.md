@@ -67,7 +67,7 @@ Config file based setup
 ## Pre Requisites
 EPG-Importer plugin is required. This should be available in the plugin feed or already installed.
 
-N.B. OpenPLi may need additional packaes installed. If you attempt to run the script and get an error about
+N.B. OpenPLi may need additional packages installed. If you attempt to run the script and get an error about
 missing modules please run
 ```
 opkg update
