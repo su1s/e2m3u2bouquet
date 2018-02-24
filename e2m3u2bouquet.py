@@ -40,7 +40,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.7.1'
 __date__ = '2017-06-04'
-__updated__ = '2018-02-20'
+__updated__ = '2018-02-24'
 
 DEBUG = 0
 TESTRUN = 0
@@ -178,7 +178,7 @@ class IPTVSetup:
                 os.remove(panel_bouquet_file)
         return panel_bouquet
 
-    def parse_m3u(self, filename, all_iptv_stream_types, panel_bouquet, xcludesref, providername):
+    def parse_m3u(self, filename, all_iptv_stream_types, tv_stream_type, vod_stream_type, panel_bouquet, xcludesref, providername):
         """core parsing routine"""
         # Extract and generate the following items from the m3u
         # group-title
@@ -231,12 +231,12 @@ class IPTVSetup:
                     # Set default name for any blank groups
                     if channeldict['group-title'] == '':
                         channeldict['group-title'] = u'None'
-                elif 'http:' in line:
+                elif 'http:' in line or 'https:' in line or 'rtmp:' in line:
                     if 'tvg-id' not in channeldict:
                         # if this is the true the playlist had a http line but not EXTINF
                         raise Exception("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
                     channeldict['stream-url'] = line.strip()
-                    self.set_streamtypes_vodcats(channeldict, all_iptv_stream_types)
+                    self.set_streamtypes_vodcats(channeldict, all_iptv_stream_types, tv_stream_type, vod_stream_type)
 
                     if channeldict['group-title'] not in dictchannels:
                         dictchannels[channeldict['group-title']] = [channeldict]
@@ -329,15 +329,18 @@ class IPTVSetup:
 
         return category_order, category_options, dictchannels
 
-    def set_streamtypes_vodcats(self, channeldict, all_iptv_stream_types):
+    def set_streamtypes_vodcats(self, channeldict, all_iptv_stream_types, tv_stream_type, vod_stream_type):
         """Set the stream types and VOD categories
         """
         if (channeldict['stream-url'].endswith('.ts') or channeldict['stream-url'].endswith('.m3u8')) \
                 and not channeldict['group-title'].startswith('VOD'):
             channeldict['stream-type'] = '4097' if all_iptv_stream_types else '1'
+            if tv_stream_type:
+                # Set custom TV stream type if supplied - this overrides all_iptv_stream_types
+                channeldict['stream-type'] = str(tv_stream_type)
         else:
             channeldict['group-title'] = u"VOD - {}".format(channeldict['group-title'])
-            channeldict['stream-type'] = "4097"
+            channeldict['stream-type'] = '4097' if not vod_stream_type else str(vod_stream_type)
 
     def parse_map_bouquet_xml(self, dictchannels, providername):
         """Check for a mapping override file and parses it if found
@@ -970,7 +973,7 @@ class IPTVSetup:
             f.write('{}</sourcecat>\n'.format(indent))
             f.write('</sources>\n')
 
-    def read_providers(self,providerfile):
+    def read_providers(self, providerfile):
         # Check we have data
         try:
             if not os.path.getsize(providerfile):
@@ -1093,6 +1096,8 @@ class config:
         <username><![CDATA[]]></username><!-- (Optional) will replace USERNAME placeholder in urls -->\r
         <password><![CDATA[]]></password><!-- (Optional) will replace PASSWORD placeholder in urls -->\r
         <iptvtypes>0</iptvtypes><!-- Change all streams to IPTV type (0 or 1) -->\r
+        <streamtypetv></streamtypetv><!-- (Optional) Custom TV stream type (e.g. 1, 4097, 5001 or 5002) -->\r
+        <streamtypevod></streamtypevod><!-- (Optional) Custom VOD stream type (e.g. 4097, 5001 or 5002) -->\r
         <multivod>0</multivod><!-- Split VOD into seperate categories (0 or 1) -->\r
         <allbouquet>1</allbouquet><!-- Create all channels bouquet -->\r
         <picons>0</picons><!-- Automatically download Picons (0 or 1) -->\r
@@ -1110,6 +1115,8 @@ class config:
         <username><![CDATA[]]></username><!-- (Optional) will replace USERNAME placeholder in urls -->\r
         <password><![CDATA[]]></password><!-- (Optional) will replace PASSWORD placeholder in urls -->\r
         <iptvtypes>0</iptvtypes><!-- Change all streams to IPTV type (0 or 1) -->\r
+        <streamtypetv></streamtypetv><!-- (Optional) Custom TV service type (e.g. 1, 4097, 5001 or 5002) -->\r
+        <streamtypevod></streamtypevod><!-- (Optional) Custom VOD service type (e.g. 4097, 5001 or 5002) -->\r
         <multivod>0</multivod><!-- Split VOD into seperate categories (0 or 1) -->\r
         <allbouquet>1</allbouquet><!-- Create all channels bouquet -->\r
         <picons>0</picons><!-- Automatically download Picons (0 or 1) -->\r
@@ -1130,7 +1137,7 @@ class config:
                 if (DEBUG == 1) or (TESTRUN == 1):
                     print('{} = {}'.format(child.tag, '' if child.text is None else child.text.strip()))
                 supplier[child.tag] = '' if child.text is None else child.text.strip()
-            if 'name' in supplier:
+            if supplier.get('name'):
                 suppliers[supplier['name']] = supplier
         return suppliers
 
@@ -1140,32 +1147,39 @@ class config:
         username = provider['username'] if 'username' in provider else ''
         password = provider['password'] if 'password' in provider else ''
 
-        newargs.append('-n={}'.format(provider['name']))
-        if not username == '':
-            newargs.append('-u={}'.format(username))
-        if not password == '':
-            newargs.append('-p={}'.format(password))
-        newargs.append('-m={}'.format(provider['m3uurl'].replace('USERNAME', username).replace('PASSWORD', password)))
-        newargs.append('-e={}'.format(provider['epgurl'].replace('USERNAME', username).replace('PASSWORD', password)))
-        if provider['iptvtypes'] == '1':
-            newargs.append('-i')
-        if provider["multivod"] == "1":
-            newargs.append('-M')
-        if provider["allbouquet"] == "1":
-            newargs.append('-a')
-        if provider["picons"] == "1":
-            newargs.append('-P')
-            newargs.append('-q={}'.format(provider['iconpath']))
-        if provider["xcludesref"] == '1':
-            newargs.append('-xs')
-        if provider["bouquettop"] == '1':
-            newargs.append('-bt')
-        if provider["bouquetdownload"] == '1':
-            newargs.append('-bd')
-            newargs.append('-b={}'.format(provider['bouqueturl'].replace('USERNAME', username).replace('PASSWORD', password)))
-        # Re-call ourselves
-        main(newargs)
-
+        if provider.get('name'):
+            newargs.append('-n={}'.format(provider['name']))
+            if not username == '':
+                newargs.append('-u={}'.format(username))
+            if not password == '':
+                newargs.append('-p={}'.format(password))
+            newargs.append('-m={}'.format(provider['m3uurl'].replace('USERNAME', username).replace('PASSWORD', password)))
+            if provider.get('epgurl'):
+                newargs.append('-e={}'.format(provider['epgurl'].replace('USERNAME', username).replace('PASSWORD', password)))
+            if provider.get('iptvtypes') and provider['iptvtypes'] == '1':
+                newargs.append('-i')
+            if provider.get('streamtypetv'):
+                newargs.append('-sttv={}'.format(provider['streamtypetv']))
+            if provider.get('streamtypevod'):
+                newargs.append('-stvod={}'.format(provider['streamtypevod']))
+            if provider.get('multivod') and provider["multivod"] == "1":
+                newargs.append('-M')
+            if provider.get('allbouquet') and provider['allbouquet'] == "1":
+                newargs.append('-a')
+            if provider.get('picons') and provider["picons"] == "1":
+                newargs.append('-P')
+                if provider.get('iconpath'):
+                    newargs.append('-q={}'.format(provider['iconpath']))
+            if provider.get('xcludesref') and provider['xcludesref'] == '1':
+                newargs.append('-xs')
+            if provider.get('bouquettop') and provider['bouquettop'] == '1':
+                newargs.append('-bt')
+            if provider.get('bouquetdownload') and provider['bouquetdownload'] == '1':
+                newargs.append('-bd')
+                if provider.get('bouqueturl'):
+                    newargs.append('-b={}'.format(provider['bouqueturl'].replace('USERNAME', username).replace('PASSWORD', password)))
+            # Re-call ourselves
+            main(newargs)
 
 def main(argv=None):  # IGNORE:C0111
     # Command line options.
@@ -1209,6 +1223,10 @@ USAGE
         # Options
         parser.add_argument('-i', '--iptvtypes', dest='iptvtypes', action='store_true',
                             help='Treat all stream references as IPTV stream type. (required for some enigma boxes)')
+        parser.add_argument('-sttv', '--streamtype_tv', dest='sttv', action='store', type=int,
+                            help='Stream type for TV (e.g. 1, 4097, 5001 or 5002) overrides iptvtypes')
+        parser.add_argument('-stvod', '--streamtype_vod', dest='stvod', action='store', type=int,
+                            help='Stream type for VOD (e.g. 4097, 5001 or 5002) overrides iptvtypes')
         parser.add_argument('-M', '--multivod', dest='multivod', action='store_true',
                             help='Create multiple VOD bouquets rather single VOD bouquet')
         parser.add_argument('-a', '--allbouquet', dest='allbouquet', action='store_true',
@@ -1229,6 +1247,7 @@ USAGE
                             help='Uninstall all changes made by this script')
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
+
         # Process arguments
         args = parser.parse_args()
         m3uurl = args.m3uurl
@@ -1246,6 +1265,8 @@ USAGE
         provider = args.providername
         username = args.username
         password = args.password
+        sttv = args.sttv
+        stvod = args.stvod
         # Set epg to rytec if nothing else provided
         if epgurl is None:
             epgurl = "http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz"
@@ -1341,7 +1362,7 @@ USAGE
         # Download m3u
         m3ufile = e2m3uSetup.download_m3u(m3uurl)
         # parse m3u file
-        categoryorder, category_options, dictchannels = e2m3uSetup.parse_m3u(m3ufile, iptvtypes, panel_bouquet,
+        categoryorder, category_options, dictchannels = e2m3uSetup.parse_m3u(m3ufile, iptvtypes, sttv, stvod, panel_bouquet,
                                                                              xcludesref, provider)
         list_xmltv_sources = e2m3uSetup.parse_map_xmltvsources_xml(provider)
         # save xml mapping - should be after m3u parsing
