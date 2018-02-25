@@ -755,7 +755,7 @@ class IPTVSetup:
 
                 if cat not in vod_categories or multivod:
                     with open(bouquet_filepath, "w+") as f:
-                        bouquet_name = '{} - {}'.format(providername, cat_title).decode("utf-8")
+                        bouquet_name = '{} - {}'.format(providername, cat_title.encode('utf-8')).decode("utf-8")
                         if not cat.startswith('VOD -'):
                             if cat in category_options and category_options[cat].get('nameOverride', False):
                                 bouquet_name = category_options[cat]['nameOverride'].decode('utf-8')
@@ -854,7 +854,7 @@ class IPTVSetup:
                         cat_title = self.get_category_title(cat, category_options)
                         # Insert group description placeholder in bouquet
                         f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0:\n")
-                        f.write("#DESCRIPTION {}\n".format(cat_title))
+                        f.write("#DESCRIPTION {}\n".format(cat_title.encode('utf-8')))
                         for x in dictchannels[cat]:
                             if x['enabled']:
                                 self.save_bouquet_entry(f, x)
@@ -1070,7 +1070,7 @@ class IPTVSetup:
 
     def get_category_id(self, cat, providername):
         """Generate 32 bit category id to help make service refs unique"""
-        return hashlib.md5(providername + cat).hexdigest()[:8]
+        return hashlib.md5(providername + cat.encode('utf-8')).hexdigest()[:8]
 
 
 class config:
