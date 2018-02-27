@@ -24,6 +24,12 @@ optional arguments:
   -h, --help            show this help message and exit
   -i, --iptvtypes       Treat all stream references as IPTV stream type.
                         (required for some enigma boxes)
+  -sttv STTV, --streamtype_tv STTV
+                        Stream type for TV (e.g. 1, 4097, 5001 or 5002)
+                        overrides iptvtypes
+  -stvod STVOD, --streamtype_vod STVOD
+                        Stream type for VOD (e.g. 4097, 5001 or 5002)
+						overrides iptvtypes
   -M, --multivod        Create multiple VOD bouquets rather than single VOD
                         bouquet
   -a, --allbouquet      Create all channels bouquet
@@ -67,7 +73,7 @@ Config file based setup
 ## Pre Requisites
 EPG-Importer plugin is required. This should be available in the plugin feed or already installed.
 
-N.B. OpenPLi may need additional packaes installed. If you attempt to run the script and get an error about
+N.B. OpenPLi may need additional packages installed. If you attempt to run the script and get an error about
 missing modules please run
 ```
 opkg update
@@ -295,5 +301,16 @@ which makes editing the crontab easier)
 #### v0.7
 * Added Config file based setup support
 * Support for multiple service providers
+
+#### v0.7.1
+* Make sure comments are xml safe
+* Extract username and password from m3u url if they are not passed in
+* Set services to stream type '1' in epg config so that the epg can be imported if
+  serviceapp is overriding stream type '4097' to exteplayer3 
+* Minor fixes & tidy
+* Option for custom stream type for TV and VOD
+* Allow https & rtmp services
+* Unicode fixes
+* Url encoding fixes
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
