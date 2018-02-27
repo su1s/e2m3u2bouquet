@@ -40,7 +40,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.7.1'
 __date__ = '2017-06-04'
-__updated__ = '2018-02-24'
+__updated__ = '2018-02-27'
 
 DEBUG = 0
 TESTRUN = 0
@@ -873,8 +873,8 @@ class IPTVSetup:
         """Add service to bouquet file
         """
         f.write("#SERVICE {}:{}:{}\n"
-                .format(channel['serviceRef'], channel['stream-url']
-                        .replace(":", "%3a"), self.get_service_title(channel).encode("utf-8")))
+                .format(channel['serviceRef'], urllib.quote(channel['stream-url']),
+                        self.get_service_title(channel).encode("utf-8")))
         f.write("#DESCRIPTION {}\n".format(self.get_service_title(channel).encode("utf-8")))
 
     def get_bouquet_index_name(self, cat_filename, provider_filename):
@@ -968,7 +968,7 @@ class IPTVSetup:
                     .format(2 * indent, channels_filename))
             f.write('{}<description>{}</description>\n'.format(3 * indent, self.xml_escape(source_name)))
             for source in sources:
-                f.write('{}<url>{}</url>\n'.format(3 * indent, self.xml_escape(source)))
+                f.write('{}<url><![CDATA[{}]]></url>\n'.format(3 * indent, source))
             f.write('{}</source>\n'.format(2 * indent))
             f.write('{}</sourcecat>\n'.format(indent))
             f.write('</sources>\n')
@@ -1000,23 +1000,25 @@ class IPTVSetup:
         return PROVIDERS
 
     def process_provider(self, provider, username, password):
-        supported_providers = ""
+        username = username if username else ''
+        password = password if password else ''
+        supported_providers = ''
         for line in PROVIDERS:
             supported_providers += " " + PROVIDERS[line]['name']
             if PROVIDERS[line]['name'].upper() == provider.upper():
                 if DEBUG:
                     print("----Provider setup details----")
-                    print("m3u = " + PROVIDERS[line]['m3u'].replace("USERNAME", username).replace("PASSWORD", password))
-                    print("epg = " + PROVIDERS[line]['epg'].replace("USERNAME", username).replace("PASSWORD", password) + "\n")
-                return PROVIDERS[line]['m3u'].replace("USERNAME", username).replace("PASSWORD", password), \
-                    PROVIDERS[line]['epg'].replace("USERNAME", username).replace("PASSWORD", password), \
+                    print("m3u = " + PROVIDERS[line]['m3u'].replace('USERNAME', urllib.quote_plus(username)).replace('PASSWORD', urllib.quote_plus(password)))
+                    print("epg = " + PROVIDERS[line]['epg'].replace('USERNAME', urllib.quote_plus(username)).replace('PASSWORD', urllib.quote_plus(password)) + "\n")
+                return PROVIDERS[line]['m3u'].replace('USERNAME', urllib.quote_plus(username)).replace('PASSWORD', urllib.quote_plus(password)), \
+                    PROVIDERS[line]['epg'].replace('USERNAME', urllib.quote_plus(username)).replace('PASSWORD', urllib.quote_plus(password)), \
                     supported_providers
         # If we get here the supplied provider is invalid
         return "NOTFOUND", "", supported_providers
 
     def extract_user_details_from_url(self, url):
-        username = None
-        password = None
+        username = ''
+        password = ''
         if url:
             parsed = urlparse.urlparse(url)
             username_param = urlparse.parse_qs(parsed.query).get('username')
@@ -1153,9 +1155,9 @@ class config:
                 newargs.append('-u={}'.format(username))
             if not password == '':
                 newargs.append('-p={}'.format(password))
-            newargs.append('-m={}'.format(provider['m3uurl'].replace('USERNAME', username).replace('PASSWORD', password)))
+            newargs.append('-m={}'.format(provider['m3uurl'].replace('USERNAME', urllib.quote_plus(username)).replace('PASSWORD', urllib.quote_plus(password))))
             if provider.get('epgurl'):
-                newargs.append('-e={}'.format(provider['epgurl'].replace('USERNAME', username).replace('PASSWORD', password)))
+                newargs.append('-e={}'.format(provider['epgurl'].replace('USERNAME', urllib.quote_plus(username)).replace('PASSWORD', urllib.quote_plus(password))))
             if provider.get('iptvtypes') and provider['iptvtypes'] == '1':
                 newargs.append('-i')
             if provider.get('streamtypetv'):
@@ -1177,7 +1179,7 @@ class config:
             if provider.get('bouquetdownload') and provider['bouquetdownload'] == '1':
                 newargs.append('-bd')
                 if provider.get('bouqueturl'):
-                    newargs.append('-b={}'.format(provider['bouqueturl'].replace('USERNAME', username).replace('PASSWORD', password)))
+                    newargs.append('-b={}'.format(provider['bouqueturl'].replace('USERNAME', urllib.quote_plus(username)).replace('PASSWORD', urllib.quote_plus(password))))
             # Re-call ourselves
             main(newargs)
 
@@ -1333,7 +1335,7 @@ USAGE
             os.makedirs(CFGPATH)
 
         # Work out provider based setup if that's what we have
-        if (provider is not None) and (username is not None) or (password is not None):
+        if (provider is not None) and m3uurl is None and ((username is not None) or (password is not None)):
             providersfile = e2m3uSetup.download_providers(PROVIDERSURL)
             e2m3uSetup.read_providers(providersfile)
             m3uurl, epgurl, supported_providers = e2m3uSetup.process_provider(
@@ -1353,7 +1355,7 @@ USAGE
             pos = m3uurl.find('get.php')
             if pos != -1:
                 bouquet_url = m3uurl[0:pos + 7] + '?username={}&password={}&type=dreambox&output=ts'.format(
-                    username, password)
+                    urllib.quote_plus(username), urllib.quote_plus(password))
         # Download panel bouquet
         panel_bouquet = None
         if bouquet_url:

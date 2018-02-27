@@ -311,5 +311,6 @@ which makes editing the crontab easier)
 * Option for custom stream type for TV and VOD
 * Allow https & rtmp services
 * Unicode fixes
+* Url encoding fixes
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
