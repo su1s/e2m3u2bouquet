@@ -40,7 +40,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.7.1'
 __date__ = '2017-06-04'
-__updated__ = '2018-02-27'
+__updated__ = '2018-02-28'
 
 DEBUG = 0
 TESTRUN = 0
@@ -1093,8 +1093,8 @@ class config:
     <supplier>\r
         <name>Supplier Name 1</name><!-- Supplier Name -->\r
         <enabled>1</enabled><!-- Enable or disable the supplier (0 or 1) -->\r
-        <m3uurl><![CDATA[http://address.yourprovider.com:80/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts]]></m3uurl><!-- Extended M3U url -->\r
-        <epgurl><![CDATA[http://address.yourprovider.com:80/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD]]></epgurl><!-- XMLTV EPG url -->\r
+        <m3uurl><![CDATA[http://address.yourprovider.com:80/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts]]></m3uurl><!-- Extended M3U url -->\r
+        <epgurl><![CDATA[http://address.yourprovider.com:80/xmltv.php?username=USERNAME&password=PASSWORD]]></epgurl><!-- XMLTV EPG url -->\r
         <username><![CDATA[]]></username><!-- (Optional) will replace USERNAME placeholder in urls -->\r
         <password><![CDATA[]]></password><!-- (Optional) will replace PASSWORD placeholder in urls -->\r
         <iptvtypes>0</iptvtypes><!-- Change all streams to IPTV type (0 or 1) -->\r
@@ -1112,8 +1112,8 @@ class config:
     <supplier>\r
         <name>Supplier Name</name><!-- Supplier Name -->\r
         <enabled>0</enabled><!-- Enable or disable the supplier (0 or 1) -->\r
-        <m3uurl><![CDATA[http://address.yourprovider.com:80/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts]]></m3uurl><!-- Extended M3U url -->\r
-        <epgurl><![CDATA[http://address.yourprovider.com:80/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD]]></epgurl><!-- XMLTV EPG url -->\r
+        <m3uurl><![CDATA[http://address.yourprovider.com:80/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts]]></m3uurl><!-- Extended M3U url -->\r
+        <epgurl><![CDATA[http://address.yourprovider.com:80/xmltv.php?username=USERNAME&password=PASSWORD]]></epgurl><!-- XMLTV EPG url -->\r
         <username><![CDATA[]]></username><!-- (Optional) will replace USERNAME placeholder in urls -->\r
         <password><![CDATA[]]></password><!-- (Optional) will replace PASSWORD placeholder in urls -->\r
         <iptvtypes>0</iptvtypes><!-- Change all streams to IPTV type (0 or 1) -->\r
