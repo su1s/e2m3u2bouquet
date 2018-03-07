@@ -12,6 +12,7 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 
 import sys
 import os
+import errno
 import re
 import unicodedata
 import datetime
@@ -38,9 +39,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.7.1'
+__version__ = '0.7.3'
 __date__ = '2017-06-04'
-__updated__ = '2018-02-28'
+__updated__ = '2018-03-07'
 
 DEBUG = 0
 TESTRUN = 0
@@ -65,12 +66,14 @@ class CLIError(Exception):
     def __unicode__(self):
         return self.msg
 
+
 class AppUrlOpener(urllib.FancyURLopener):
     """Set user agent for downloads"""
     version = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
 
+
 class IPTVSetup:
-    def __init__(self):
+    def display_welcome(self):
         # welcome message
         print('\n********************************')
         print('Starting Engima2 IPTV bouquets v{}'.format(__version__))
@@ -105,7 +108,8 @@ class IPTVSetup:
             bakfile.close()
             tvfile.close()
         except Exception, e:
-            raise e
+            print('Unable to uninstall')
+            raise
         print('----Uninstall complete----')
 
     def download_m3u(self, url):
@@ -118,7 +122,8 @@ class IPTVSetup:
         try:
             urllib.urlretrieve(url, filename)
         except Exception, e:
-            raise e
+            print('Unable to download m3u file from url')
+            raise
         return filename
 
     def download_providers(self, url):
@@ -139,7 +144,8 @@ class IPTVSetup:
             urllib.urlretrieve(url, filename)
             return filename
         except Exception, e:
-            raise e
+            print('Unable to download Github providers')
+            raise
 
     def download_bouquet(self, url):
         """Download panel bouquet file from url"""
@@ -151,7 +157,8 @@ class IPTVSetup:
         try:
            urllib.urlretrieve(url, filename)
         except Exception, e:
-           raise e
+            print('Unable to download providers panel bouquet file')
+            raise
         return filename
 
     def parse_panel_bouquet(self, panel_bouquet_file):
@@ -193,7 +200,7 @@ class IPTVSetup:
             if not os.path.getsize(filename):
                 raise Exception("M3U file is empty. Check username & password")
         except Exception, e:
-            raise e
+            raise
 
         category_order = []
         category_options = {}
@@ -602,8 +609,11 @@ class IPTVSetup:
     def download_picons(self, dictchannels, iconpath):
         print('\n----Downloading Picon files, please be patient----')
         print('If no Picons exist this will take a few minutes')
-        if not os.path.isdir(iconpath):
+        try:
             os.makedirs(iconpath)
+        except OSError, e:  # race condition guard
+            if e.errno != errno.EEXIST:
+                raise
 
         for cat in dictchannels:
             if not cat.startswith('VOD'):
@@ -916,8 +926,11 @@ class IPTVSetup:
         if DEBUG:
             print('creating EPGImporter config')
         # create channels file
-        if not os.path.isdir(EPGIMPORTPATH):
+        try:
             os.makedirs(EPGIMPORTPATH)
+        except OSError, e:  # race condition guard
+            if e.errno != errno.EEXIST:
+                raise
         channels_filename = os.path.join(EPGIMPORTPATH, 'suls_iptv_{}_channels.xml'.format(self.get_safe_filename(provider)))
 
         if dictchannels:
@@ -979,7 +992,7 @@ class IPTVSetup:
             if not os.path.getsize(providerfile):
                 raise Exception('Providers file is empty')
         except Exception, e:
-            raise e
+            raise
         with open(providerfile, "r") as f:
             for line in f:
                 if line == '400: Invalid request\n':
@@ -1183,6 +1196,7 @@ class config:
             # Re-call ourselves
             main(newargs)
 
+
 def main(argv=None):  # IGNORE:C0111
     # Command line options.
     if argv is None:
@@ -1248,7 +1262,6 @@ USAGE
         parser.add_argument('-U', '--uninstall', dest='uninstall', action='store_true',
                             help='Uninstall all changes made by this script')
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
-
 
         # Process arguments
         args = parser.parse_args()
@@ -1322,6 +1335,7 @@ USAGE
     # # Core program logic starts here
     urllib._urlopener = AppUrlOpener()
     e2m3uSetup = IPTVSetup()
+    e2m3uSetup.display_welcome()
     if uninstall:
         # Clean up any existing files
         e2m3uSetup.uninstaller()
@@ -1331,8 +1345,11 @@ USAGE
         sys.exit(1)  # Quit here if we just want to uninstall
     else:
         # create config folder if it doesn't exist
-        if not os.path.isdir(CFGPATH):
+        try:
             os.makedirs(CFGPATH)
+        except OSError, e:      # race condition guard
+            if e.errno != errno.EEXIST:
+                raise
 
         # Work out provider based setup if that's what we have
         if (provider is not None) and m3uurl is None and ((username is not None) or (password is not None)):
@@ -1370,7 +1387,7 @@ USAGE
         # save xml mapping - should be after m3u parsing
         e2m3uSetup.save_map_xml(categoryorder, category_options, dictchannels, list_xmltv_sources, provider)
 
-        #download picons
+        # Download picons
         if picons:
             e2m3uSetup.download_picons(dictchannels, iconpath)
         # Create bouquet files
