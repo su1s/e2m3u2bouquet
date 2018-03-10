@@ -39,9 +39,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.7.3'
+__version__ = '0.7.4'
 __date__ = '2017-06-04'
-__updated__ = '2018-03-07'
+__updated__ = '2018-03-10'
 
 DEBUG = 0
 TESTRUN = 0
@@ -642,10 +642,18 @@ class IPTVSetup:
                         sys.stdout.write('.')
                         sys.stdout.flush()
                 try:
-                    urllib.urlretrieve(logourl, piconfilepath)
+                    response = urllib.urlopen(logourl)
+                    info = response.info()
+                    response.close()
+                    if info.maintype == 'image':
+                        urllib.urlretrieve(logourl, piconfilepath)
+                    else:
+                        if DEBUG:
+                            print('Download Picon - not an image skipping')
+                        return
                 except Exception, e:
                     if DEBUG:
-                        print(e)
+                        print('Download picon urlopen error', e)
                     return
                 self.picon_post_processing(piconfilepath)
 
@@ -659,7 +667,7 @@ class IPTVSetup:
             ext = imghdr.what(piconfilepath)
         except Exception, e:
             if DEBUG:
-                print(e)
+                print('Picon post processing - not an image or no file', e, piconfilepath)
             return
         # if image but not png convert to png
         if (ext is not None) and (ext is not 'png'):
@@ -669,14 +677,14 @@ class IPTVSetup:
                 Image.open(piconfilepath).save("{}.{}".format(piconfilepath, 'png'))
             except Exception, e:
                 if DEBUG:
-                    print(e)
+                    print('Picon post processing - unable to convert image', e)
                 return
             try:
                 # remove non png file
                 os.remove(piconfilepath)
             except Exception, e:
                 if DEBUG:
-                    print(e)
+                    print('Picon post processing - unable to remove non png file', e)
                 return
         else:
             # rename to correct extension
@@ -684,7 +692,7 @@ class IPTVSetup:
                 os.rename(piconfilepath, "{}.{}".format(piconfilepath, ext))
             except Exception, e:
                 if DEBUG:
-                    print(e)
+                    print('Picon post processing - unable to rename file ', e)
 
     def get_picon_name(self, serviceName):
         """Convert the service name to a Picon Service Name
@@ -1286,7 +1294,7 @@ USAGE
         if epgurl is None:
             epgurl = "http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz"
         # Set piconpath
-        if iconpath is None:
+        if iconpath is None or TESTRUN == 1:
             iconpath = PICONSPATH
         if provider is None:
             provider = "E2m3u2Bouquet"

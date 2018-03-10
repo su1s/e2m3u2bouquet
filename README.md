@@ -312,4 +312,11 @@ which makes editing the crontab easier)
 * Unicode fixes
 * Url encoding fixes
 
+### v0.7.3
+* Fix issue where main screen showing no text on some skins
+* Add option to reset bouquets
+
+### v0.7.4
+* Extra checking to ensure that logos are actually images
+
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
