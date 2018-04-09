@@ -318,5 +318,6 @@ which makes editing the crontab easier)
 
 ### v0.7.4
 * Extra checking to ensure that logos are actually images
+* Keep provider order from config file
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script

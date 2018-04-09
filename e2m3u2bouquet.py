@@ -41,7 +41,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.7.4'
 __date__ = '2017-06-04'
-__updated__ = '2018-03-10'
+__updated__ = '2018-04-10'
 
 DEBUG = 0
 TESTRUN = 0
@@ -1152,7 +1152,7 @@ class config:
 </config>""")
 
     def readconfig(self, configfile):
-        suppliers = {}
+        suppliers = OrderedDict()
         tree = ET.ElementTree(file=configfile)
         for node in tree.findall('.//supplier'):
             supplier = {}
