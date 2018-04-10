@@ -4,7 +4,7 @@ Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2b
 
 ## Usage
 ```
-usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL] [-n PROVIDERNAME]
+usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL]
                         [-u USERNAME] [-p PASSWORD] [-i] [-sttv STTV]
                         [-stvod STVOD] [-M] [-a] [-P] [-q ICONPATH] [-xs]
                         [-b BOUQUETURL] [-bd] [-bt] [-U] [-V]						
@@ -53,14 +53,7 @@ URL Based Setup:
                         URL to download m3u data from (required)
   -e EPGURL, --epgurl EPGURL
                         URL source for XML TV epg data sources  
-						
-Provider Based Setup:
-  -n PROVIDERNAME, --providername PROVIDERNAME
-                        Host IPTV provider name (FAB/EPIC) (required)
-  -u USERNAME, --username USERNAME
-                        Your IPTV username (required)
-  -p PASSWORD, --password PASSWORD
-                        Your IPTV password (required)
+
 Config file based setup
                         No parameters required
                         The script will create a default config file
@@ -90,17 +83,11 @@ cd /etc/enigma2/e2m3u2bouquet
 ```
 chmod 755 e2m3u2bouquet.py
 ```
-## Provider Based Setup
-```
-./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
-```
-Supported providers are currently
-FAB, EPIC, ULTIMATESPORTS, ACE, POSH
 
 ## URL Based Setup
 Run the script passing the url for your m3u file and the url for your providers XML TV data feed (for FAB hosting the below works)
 ```
-./e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
+./e2m3u2bouquet.py -m "http://provider_url/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://provider_url/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
 ```
 **NB: you need to replace the username and password values X 2**
 
@@ -123,17 +110,17 @@ is `/usr/share/enigma2/picon/` (internal flash) other enigma2 picon search locat
 N.B. If you store the picons on HDD it was spin up whenever they are shown
 
 ```
-./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD -P
+./e2m3u2bouquet.py "http://provider_url/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://provider_url/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD" -P
 ```
 
 ## Specify all stream types to be IPTV
 Default is DVB stream types for live channels and IPTV for VOD, all IPTV type streams may be required if you are unable to record channels.
 ```
-./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD -i
+./e2m3u2bouquet.py "http://provider_url/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://provider_url/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD" -i
 ```
 
 ## Keep VOD all in a single bouquet
-./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD -s
+./e2m3u2bouquet.py "http://provider_url/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://provider_url/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD" -s
 
 ## Uninstall
 ./e2m3u2bouquet.py -U
@@ -165,10 +152,6 @@ crontab -e
 Once open press i to switch to INSERT mode enter the following (retype or ctrl-v to paste)
 This will automatically run the script at 06:00 & 18:00 every day
 ```
-0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
-```
-or
-```
 0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
 ```
 or
@@ -189,7 +172,7 @@ which makes editing the crontab easier)
 * Select the required update frequency
 * For the command to run enter i.e. to run at 06:00 & 18:00 enter
 ```
-0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py -n FAB -u USERNAME -p PASSWORD
+0 6,18 * * * cd /home/root && ./e2m3u2bouquet.py
 ```
 * Ensure that cron Autostart is active
 
