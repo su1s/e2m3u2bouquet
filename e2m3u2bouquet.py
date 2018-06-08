@@ -24,6 +24,7 @@ import glob
 import ssl
 import hashlib
 import base64
+import socket
 from PIL import Image
 from collections import OrderedDict
 from collections import deque
@@ -39,9 +40,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.7.4'
+__version__ = '0.7.5'
 __date__ = '2017-06-04'
-__updated__ = '2018-04-10'
+__updated__ = '2018-06-08'
 
 DEBUG = 0
 TESTRUN = 0
@@ -339,7 +340,9 @@ class IPTVSetup:
     def set_streamtypes_vodcats(self, channeldict, all_iptv_stream_types, tv_stream_type, vod_stream_type):
         """Set the stream types and VOD categories
         """
-        if (channeldict['stream-url'].endswith('.ts') or channeldict['stream-url'].endswith('.m3u8')) \
+        parsed_stream_url = urlparse.urlparse(channeldict['stream-url'])
+
+        if (parsed_stream_url.path.endswith('.ts') or parsed_stream_url.path.endswith('.m3u8')) \
                 and not channeldict['group-title'].startswith('VOD'):
             channeldict['stream-type'] = '4097' if all_iptv_stream_types else '1'
             if tv_stream_type:
@@ -1342,6 +1345,7 @@ USAGE
 
     # # Core program logic starts here
     urllib._urlopener = AppUrlOpener()
+    socket.setdefaulttimeout(30)
     e2m3uSetup = IPTVSetup()
     e2m3uSetup.display_welcome()
     if uninstall:
