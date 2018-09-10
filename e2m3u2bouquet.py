@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # encoding: utf-8
 
 """
@@ -42,7 +42,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.7.5'
 __date__ = '2017-06-04'
-__updated__ = '2018-06-08'
+__updated__ = '2018-09-10'
 
 DEBUG = 0
 TESTRUN = 0
@@ -822,7 +822,7 @@ class IPTVSetup:
                             if vodcat in dictchannels:
                                 # Insert group description placeholder in bouquet
                                 f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0:\n")
-                                f.write("#DESCRIPTION {}\n". format(vodcat))
+                                f.write("#DESCRIPTION {}\n". format(vodcat.encode('utf-8')))
                                 for x in dictchannels[vodcat]:
                                     self.save_bouquet_entry(f, x)
                                     channel_num += 1
@@ -1107,11 +1107,11 @@ class config:
         f = open(configfile, 'wb')
         f.write("""<!--\r
     E2m3u2bouquet supplier config file\r
-    Add as many suppliers as required and run the script with no parameters\r 
-    this config file will be used and the relevant bouquets set up for all suppliers entered\r 
+    Add as many suppliers as required and run the script with no parameters\r
+    this config file will be used and the relevant bouquets set up for all suppliers entered\r
     0 = No/false\r
     1 = Yes/true\r
-    For elements with <![CDATA[]] enter value between brackets e.g. <![CDATA[mypassword]]>\r 
+    For elements with <![CDATA[]] enter value between brackets e.g. <![CDATA[mypassword]]>\r
 -->\r
 <config>\r
     <supplier>\r
