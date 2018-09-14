@@ -40,9 +40,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.7.5'
+__version__ = '0.7.6'
 __date__ = '2017-06-04'
-__updated__ = '2018-06-08'
+__updated__ = '2018-09-14'
 
 DEBUG = 0
 TESTRUN = 0
@@ -342,7 +342,11 @@ class IPTVSetup:
         """
         parsed_stream_url = urlparse.urlparse(channeldict['stream-url'])
 
+        # check for vod streams ending .*.m3u8 e.g. 2345.mp4.m3u8
+        is_m3u8_vod = re.search('\..+\.m3u8$', parsed_stream_url.path)
+
         if (parsed_stream_url.path.endswith('.ts') or parsed_stream_url.path.endswith('.m3u8')) \
+                and not is_m3u8_vod \
                 and not channeldict['group-title'].startswith('VOD'):
             channeldict['stream-type'] = '4097' if all_iptv_stream_types else '1'
             if tv_stream_type:
@@ -988,7 +992,7 @@ class IPTVSetup:
         with open(os.path.join(EPGIMPORTPATH, source_filename), "w+") as f:
             f.write('<sources>\n')
             f.write('{}<sourcecat sourcecatname="IPTV Bouquet Maker - E2m3u2bouquet">\n'.format(indent))
-            f.write('{}<source type="gen_xmltv" channels="{}">\n'
+            f.write('{}<source type="gen_xmltv" nocheck="1" channels="{}">\n'
                     .format(2 * indent, channels_filename))
             f.write('{}<description>{}</description>\n'.format(3 * indent, self.xml_escape(source_name)))
             for source in sources:
@@ -1107,11 +1111,11 @@ class config:
         f = open(configfile, 'wb')
         f.write("""<!--\r
     E2m3u2bouquet supplier config file\r
-    Add as many suppliers as required and run the script with no parameters\r 
-    this config file will be used and the relevant bouquets set up for all suppliers entered\r 
+    Add as many suppliers as required and run the script with no parameters\r
+    this config file will be used and the relevant bouquets set up for all suppliers entered\r
     0 = No/false\r
     1 = Yes/true\r
-    For elements with <![CDATA[]] enter value between brackets e.g. <![CDATA[mypassword]]>\r 
+    For elements with <![CDATA[]] enter value between brackets e.g. <![CDATA[mypassword]]>\r
 -->\r
 <config>\r
     <supplier>\r

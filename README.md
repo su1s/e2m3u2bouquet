@@ -306,8 +306,8 @@ which makes editing the crontab easier)
 ### v0.7.5
 * Additional stream url type checking (e.g. live or VOD)
 
-### v0.8
-* When providers boquet is downloaded (-b or -bd option) use full service references
-  instead of just the epg releveant part incase it's used for picon naming
+### v0.7.6
+* Add nocheck attribute for EpgImporter sources (fix for new EpgImporter version)
+* Add m3u8 VOD stream matching
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
