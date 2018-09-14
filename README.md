@@ -7,7 +7,7 @@ Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2b
 usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL]
                         [-u USERNAME] [-p PASSWORD] [-i] [-sttv STTV]
                         [-stvod STVOD] [-M] [-a] [-P] [-q ICONPATH] [-xs]
-                        [-b BOUQUETURL] [-bd] [-bt] [-U] [-V]						
+                        [-b BOUQUETURL] [-bd] [-bt] [-U] [-V]
 
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 
@@ -44,7 +44,7 @@ optional arguments:
   -bd, --bouquetdownload
                         Download providers bouquet (use default url) - to map
                         custom service references
-  -bt, --bouquettop     Place IPTV bouquets at top   
+  -bt, --bouquettop     Place IPTV bouquets at top
   -U, --uninstall       Uninstall all changes made by this script
   -V, --version         show program's version number and exit
 
@@ -52,7 +52,7 @@ URL Based Setup:
   -m M3UURL, --m3uurl M3UURL
                         URL to download m3u data from (required)
   -e EPGURL, --epgurl EPGURL
-                        URL source for XML TV epg data sources  
+                        URL source for XML TV epg data sources
 
 Config file based setup
                         No parameters required
@@ -137,7 +137,7 @@ Default is DVB stream types for live channels and IPTV for VOD, all IPTV type st
 * Kick off a manual EPG import
 
 ## Updating Channels
-To update the channels simply run this script again. A scheduled script can 
+To update the channels simply run this script again. A scheduled script can
 be set up to automate this process (see below)
 
 ## Automate channel updates (set up from SSH)
@@ -227,7 +227,7 @@ which makes editing the crontab easier)
   * Reorder bouquets
   * Reorder channels within bouquets
   * Disable entire bouquet or individual channels
-  * Ability to change service reference (so that EPG from existing satellite service can be used)  
+  * Ability to change service reference (so that EPG from existing satellite service can be used)
   * Change tvg-id to match other xml epg feeds
   * Support unicode characters in playlist
   * Xml override file can set-up EPG-Importer config for different xmltv feeds
@@ -236,7 +236,7 @@ which makes editing the crontab easier)
 #### v0.5.1
 * Stream Url no longer output to xml (replaced by clearStreamUrl). This means that custom override
   maps can be shared as they no longer contain username and passwords
- 
+
 #### v0.5.2
 * Fix bug where delimiter arguments weren't getting converted to ints
 
@@ -288,7 +288,7 @@ which makes editing the crontab easier)
 * Make sure comments are xml safe
 * Extract username and password from m3u url if they are not passed in
 * Set services to stream type '1' in epg config so that the epg can be imported if
-  serviceapp is overriding stream type '4097' to exteplayer3 
+  serviceapp is overriding stream type '4097' to exteplayer3
 * Minor fixes & tidy
 * Option for custom stream type for TV and VOD
 * Allow https & rtmp services
@@ -305,5 +305,9 @@ which makes editing the crontab easier)
 
 ### v0.7.5
 * Additional stream url type checking (e.g. live or VOD)
+
+### v0.7.6
+* Add nocheck attribute for EpgImporter sources (fix for new EpgImporter version)
+* Add m3u8 VOD stream matching
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
