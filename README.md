@@ -310,4 +310,10 @@ which makes editing the crontab easier)
 * Add nocheck attribute for EpgImporter sources (fix for new EpgImporter version)
 * Add m3u8 VOD stream matching
 
+### v0.8
+* When providers boquet is downloaded (-b or -bd option) use full service references
+  instead of just the epg releveant part incase it's used for picon naming
+* Better multi provider handler e.g. if there is an issue with one provider it
+  won't stop the script processing others
+
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
