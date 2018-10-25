@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # encoding: utf-8
 
 """
@@ -40,9 +40,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.7.6'
+__version__ = '0.7.7'
 __date__ = '2017-06-04'
-__updated__ = '2018-09-14'
+__updated__ = '2018-10-26'
 
 DEBUG = 0
 TESTRUN = 0
@@ -341,11 +341,13 @@ class IPTVSetup:
         """Set the stream types and VOD categories
         """
         parsed_stream_url = urlparse.urlparse(channeldict['stream-url'])
+        root, ext = os.path.splitext(parsed_stream_url.path)
 
         # check for vod streams ending .*.m3u8 e.g. 2345.mp4.m3u8
         is_m3u8_vod = re.search('\..+\.m3u8$', parsed_stream_url.path)
 
         if (parsed_stream_url.path.endswith('.ts') or parsed_stream_url.path.endswith('.m3u8')) \
+                or not ext \
                 and not is_m3u8_vod \
                 and not channeldict['group-title'].startswith('VOD'):
             channeldict['stream-type'] = '4097' if all_iptv_stream_types else '1'

@@ -310,4 +310,7 @@ which makes editing the crontab easier)
 * Add nocheck attribute for EpgImporter sources (fix for new EpgImporter version)
 * Add m3u8 VOD stream matching
 
+### v0.7.7
+* Set extensionless streams as live TV
+
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
