@@ -318,12 +318,16 @@ which makes editing the crontab easier)
 
 ### v0.8
 * When providers bouquet is downloaded (-b or -bd option) now uses full service references
-  instead of just the epg releveant part incase it's used for picon naming
+  instead of just the epg relevant part in case it's used for picon naming
 * Better multi provider handler e.g. if there is an issue with one provider it
   won't stop the script processing others
 * If vod categories are out of order in the playlist group together
 * Fix file naming issues with non alphanumeric characters
 * Much faster when using an override file :)
 * Don't retry failed picon downloads
+* Option to add placeholder channel in override file (to control channel numbering)
+* Allow channels to be moved between categories, use categoryOverride in the override file
+* All custom categories, use customCategory="true" in the override file
+* Add provider managed update support
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script

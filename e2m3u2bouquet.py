@@ -42,7 +42,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.8.0'
 __date__ = '2017-06-04'
-__updated__ = '2018-11-03'
+__updated__ = '2018-11-18'
 
 DEBUG = 0
 TESTRUN = 0
@@ -52,6 +52,7 @@ EPGIMPORTPATH = '/etc/epgimport/'
 CFGPATH = os.path.join(ENIGMAPATH, 'e2m3u2bouquet/')
 PICONSPATH = '/usr/share/enigma2/picon/'
 IMPORTED = False
+PLACEHOLDER_SERVICE = '#SERVICE 1:832:d:0:0:0:0:0:0:0:'
 
 
 class CLIError(Exception):
@@ -78,7 +79,6 @@ def display_welcome():
     print('Starting Enigma2 IPTV bouquets v{}'.format(__version__))
     print(str(datetime.datetime.now()))
     print("********************************\n")
-
 
 def make_config_folder():
     """create config folder if it doesn't exist
@@ -254,6 +254,7 @@ class Provider:
         self.bouquet_url = ''
         self.bouquet_download = False
         self.bouquet_top = False
+        self.last_provider_update = 0
 
 
     def _download_picon_file(self, logo_url, title):
@@ -434,28 +435,62 @@ class Provider:
                     dictoption["enabled"] = True
                     category_order.append(category)
 
+                    # If this category is marked as custom and doesn't exist in self._dictchannels then add
+                    is_custom_category = node.attrib.get('customCategory', '')
+                    if is_custom_category == 'true':
+                        if category not in self._dictchannels:
+                            self._dictchannels[category] = []
+
                 self._category_options[category] = dictoption
 
             print("custom bouquet order applied...")
         return category_order
 
     def _parse_map_channels_xml(self):
-        """Check for channels within mapping override file and applies if found
+        """Check for channels within mapping override file and apply if found
         """
         mapping_file = self._get_mapping_file()
         if mapping_file:
             print("\n----Parsing custom channel order, please be patient----")
 
             tree = ET.ElementTree(file=mapping_file)
+            i = 0
             for cat in self._dictchannels:
                 if not cat.startswith("VOD"):
                     # We don't override any individual VOD streams
                     sortedchannels = []
                     listchannels = []
+
+                    # find channels that are to be moved to this category (categoryOverride)
+                    for node in tree.findall(u'.//channel[@categoryOverride="{}"]'.format(cat)):
+                        node_name = node.attrib.get('name')
+                        category = node.attrib.get('category')
+                        channel_index = None
+
+                        # get index of channel in the current category
+                        try:
+                            channel_index = next((self._dictchannels[category].index(item) for item in self._dictchannels[category]
+                                                  if item['stream-name'] == node_name), None)
+                        except KeyError:
+                            pass
+
+                        if channel_index is not None:
+                            # remove from existing category and add to new
+                            self._dictchannels[cat].append(self._dictchannels[category].pop(channel_index))
+
                     for x in self._dictchannels[cat]:
                         listchannels.append(x['stream-name'])
+
                     for node in tree.findall(u'.//channel[@category="{}"]'.format(cat)):
-                        sortedchannels.append(node.attrib.get('name'))
+                        # Check for placeholders, give unique name, insert into sorted channels and dictchannels[cat]
+                        node_name = node.attrib.get('name')
+
+                        if node_name == 'placeholder':
+                            node_name = 'placeholder_' + str(i)
+                            listchannels.append(node_name)
+                            self._dictchannels[cat].append({'stream-name': node_name})
+                            i += 1
+                        sortedchannels.append(node_name)
 
                     sortedchannels.extend(listchannels)
                     # remove duplicates, keep order
@@ -471,14 +506,30 @@ class Provider:
             for override_channel in channel_nodes:
                 name = override_channel.attrib.get('name')
                 category = override_channel.attrib.get('category')
+                category_override = override_channel.attrib.get('categoryOverride')
+                channel_index = None
+                channels_list = None
 
-                channels_list = self._dictchannels.get(category)
-                if channels_list is not None:
+                if category_override:
+                    # check if the channel has been moved to the new category
+                    try:
+                        channel_index = next((self._dictchannels[category_override].index(item) for item in self._dictchannels[category_override]
+                                          if item['stream-name'] == name), None)
+                    except KeyError:
+                        pass
+
+                if category_override and channel_index is not None:
+                    channels_list = self._dictchannels.get(category_override)
+                else:
+                    channels_list = self._dictchannels.get(category)
+
+                if channels_list is not None and name != 'placeholder':
                     for x in channels_list:
                         if x['stream-name'] == name:
                             if override_channel.attrib.get('enabled') == 'false':
                                 x['enabled'] = False
                             x['nameOverride'] = override_channel.attrib.get('nameOverride', '')
+                            x['categoryOverride'] = override_channel.attrib.get('categoryOverride', '')
                             # default to current values if attribute doesn't exist
                             x['tvg-id'] = override_channel.attrib.get('tvg-id', x['tvg-id'])
                             if override_channel.attrib.get('serviceRef', None) and self.sref_override:
@@ -505,10 +556,13 @@ class Provider:
     def _save_bouquet_entry(self, f, channel):
         """Add service to bouquet file
         """
-        f.write("#SERVICE {}:{}:{}\n"
-                .format(channel['serviceRef'], urllib.quote(channel['stream-url']),
-                        get_service_title(channel).encode("utf-8")))
-        f.write("#DESCRIPTION {}\n".format(get_service_title(channel).encode("utf-8")))
+        if not channel['stream-name'].startswith('placeholder_'):
+            f.write("#SERVICE {}:{}:{}\n"
+                    .format(channel['serviceRef'], urllib.quote(channel['stream-url']),
+                            get_service_title(channel).encode("utf-8")))
+            f.write("#DESCRIPTION {}\n".format(get_service_title(channel).encode("utf-8")))
+        else:
+            f.write('{}\n'.format(PLACEHOLDER_SERVICE))
 
     def _get_bouquet_index_name(self, cat_filename, provider_filename):
         return ('#SERVICE 1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "userbouquet.suls_iptv_{}_{}.tv" ORDER BY bouquet\n'
@@ -571,7 +625,7 @@ class Provider:
 
             # write place holder channels (for channel numbering)
             for i in xrange(100):
-                f.write('#SERVICE 1:832:d:0:0:0:0:0:0:0:\n')
+                f.write('{}\n'.format(PLACEHOLDER_SERVICE))
             channel_num = 1
 
             for cat in self._category_order:
@@ -582,12 +636,12 @@ class Provider:
                         f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0:\n")
                         f.write("#DESCRIPTION {}\n".format(cat_title.encode('utf-8')))
                         for x in self._dictchannels[cat]:
-                            if x['enabled']:
+                            if x.get('enabled') or x['stream-name'].startswith('placeholder_'):
                                 self._save_bouquet_entry(f, x)
                             channel_num += 1
 
                         while (channel_num % 100) is not 0:
-                            f.write('#SERVICE 1:832:d:0:0:0:0:0:0:0:\n')
+                            f.write('{}\n'.format(PLACEHOLDER_SERVICE))
                             channel_num += 1
 
         # Add to bouquet index list
@@ -742,8 +796,8 @@ class Provider:
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
                     service_dict = {'tvg-id': '', 'tvg-name': '', 'tvg-logo': '', 'group-title': '', 'stream-name': '',
-                                    'stream-url': '', 'enabled': True, 'nameOverride': '', 'serviceRef': '',
-                                    'serviceRefOverride': False
+                                    'stream-url': '', 'enabled': True, 'nameOverride': '', 'categoryOverride' : '',
+                                    'serviceRef': '', 'serviceRefOverride': False
                                     }
                     if line.find('tvg-') == -1:
                         raise Exception("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
@@ -776,10 +830,9 @@ class Provider:
                     else:
                         self._dictchannels[service_dict['group-title']].append(service_dict)
 
-        self._category_order = self._dictchannels.keys()
-
         # sort categories by custom order (if exists)
         sorted_categories = self._parse_map_bouquet_xml()
+        self._category_order = self._dictchannels.keys()
         sorted_categories.extend(self._category_order)
         # remove duplicates, keep order
         self._category_order = OrderedDict((x, True) for x in sorted_categories).keys()
@@ -814,19 +867,22 @@ class Provider:
                     for x in self._dictchannels[cat]:
                         cat_id = self._get_category_id(cat)
                         service_ref = "{:x}:{}:{}:0".format(num, cat_id[:4], cat_id[4:])
-                        if self._panel_bouquet and not x['serviceRefOverride']:
-                            # check if we have the panels custom service ref
-                            pos = x['stream-url'].rfind('/')
-                            if pos != -1 and (pos + 1 != len(x['stream-url'])):
-                                m3u_stream_file = x['stream-url'][pos + 1:]
-                                if m3u_stream_file in self._panel_bouquet:
-                                    # have a match use the panels custom service ref
-                                    x['serviceRef'] = "{}:{}".format(x['stream-type'], self._panel_bouquet[m3u_stream_file])
-                                    continue
-                        if not x['serviceRefOverride']:
-                            # if service ref is not overridden in xml update
-                            x['serviceRef'] = "{}:0:1:{}:0:0:0".format(x['stream-type'], service_ref)
-                        num += 1
+                        if not x['stream-name'].startswith('placeholder_'):
+                            if self._panel_bouquet and not x.get('serviceRefOverride'):
+                                # check if we have the panels custom service ref
+                                pos = x['stream-url'].rfind('/')
+                                if pos != -1 and (pos + 1 != len(x['stream-url'])):
+                                    m3u_stream_file = x['stream-url'][pos + 1:]
+                                    if m3u_stream_file in self._panel_bouquet:
+                                        # have a match use the panels custom service ref
+                                        x['serviceRef'] = "{}:{}".format(x['stream-type'], self._panel_bouquet[m3u_stream_file])
+                                        continue
+                            if not x.get('serviceRefOverride'):
+                                # if service ref is not overridden in xml update
+                                x['serviceRef'] = "{}:0:1:{}:0:0:0".format(x['stream-type'], service_ref)
+                            num += 1
+                        else:
+                            x['serviceRef'] = PLACEHOLDER_SERVICE
                 else:
                     for x in self._dictchannels[cat]:
                         x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['stream-type'], vod_service_id)
@@ -907,7 +963,8 @@ class Provider:
             if not cat.startswith('VOD'):
                 # Download Picon if not VOD
                 for x in self._dictchannels[cat]:
-                    self._download_picon_file(x['tvg-logo'], get_service_title(x))
+                    if not x['stream-name'].startswith('placeholder_'):
+                        self._download_picon_file(x['tvg-logo'], get_service_title(x))
         print('\nPicons download completed...')
         print('Box will need restarted for Picons to show...')
 
@@ -1061,15 +1118,25 @@ class Provider:
                         if not cat.startswith('VOD'):
                             f.write('{}<!-- {} -->\r\n'.format(2 * indent, xml_safe_comment(xml_escape(cat.encode('utf-8')))))
                             for x in self._dictchannels[cat]:
-                                f.write('{}<channel name="{}" nameOverride="{}" tvg-id="{}" enabled="{}" category="{}" serviceRef="{}" clearStreamUrl="{}" />\r\n'
+                                if not x['stream-name'].startswith('placeholder_'):
+                                    f.write('{}<channel name="{}" nameOverride="{}" tvg-id="{}" enabled="{}" category="{}" categoryOverride="{}" serviceRef="{}" clearStreamUrl="{}" />\r\n'
+                                            .format(2 * indent,
+                                                    xml_escape(x['stream-name'].encode('utf-8')),
+                                                    xml_escape(x.get('nameOverride', '').encode('utf-8')),
+                                                    xml_escape(x['tvg-id'].encode('utf-8')),
+                                                    str(x['enabled']).lower(),
+                                                    #xml_escape(cat.encode('utf-8')),
+                                                    xml_escape(x['group-title'].encode('utf-8')),
+                                                    xml_escape(x.get('categoryOverride', '').encode('utf-8')),
+                                                    xml_escape(x['serviceRef']),
+                                                    'false' if x['stream-url'] else 'true'
+                                                    ))
+                                else:
+                                    f.write(
+                                        '{}<channel name="{}" category="{}" />\r\n'
                                         .format(2 * indent,
-                                                xml_escape(x['stream-name'].encode('utf-8')),
-                                                xml_escape(x.get('nameOverride', '').encode('utf-8')),
-                                                xml_escape(x['tvg-id'].encode('utf-8')),
-                                                str(x['enabled']).lower(),
+                                                'placeholder',
                                                 xml_escape(cat.encode('utf-8')),
-                                                xml_escape(x['serviceRef']),
-                                                'false' if x['stream-url'] else 'true'
                                                 ))
 
                 f.write('{}</channels>\r\n'.format(indent))
@@ -1125,17 +1192,17 @@ class Provider:
                         if not channel_number_start_offset_output and not self.all_bouquet:
                             # write place holder services (for channel numbering)
                             for i in xrange(100):
-                                f.write('#SERVICE 1:832:d:0:0:0:0:0:0:0:\n')
+                                f.write('{}\n'.format(PLACEHOLDER_SERVICE))
                             channel_number_start_offset_output = True
                             channel_num += 1
 
                         for x in self._dictchannels[cat]:
-                            if x['enabled']:
+                            if x.get('enabled') or x['stream-name'].startswith('placeholder_'):
                                 self._save_bouquet_entry(f, x)
                             channel_num += 1
 
                         while (channel_num % 100) is not 0:
-                            f.write('#SERVICE 1:832:d:0:0:0:0:0:0:0:\n')
+                            f.write('{}\n'.format(PLACEHOLDER_SERVICE))
                             channel_num += 1
                 elif not vod_category_output and not self.multi_vod:
                     # not multivod - output all the vod services in one file
@@ -1149,7 +1216,7 @@ class Provider:
                         if not channel_number_start_offset_output and not self.all_bouquet:
                             # write place holder services (for channel numbering)
                             for i in xrange(100):
-                                f.write('#SERVICE 1:832:d:0:0:0:0:0:0:0:\n')
+                                f.write('{}\n'.format(PLACEHOLDER_SERVICE))
                             channel_number_start_offset_output = True
                             channel_num += 1
 
@@ -1163,7 +1230,7 @@ class Provider:
                                     channel_num += 1
 
                                 while (channel_num % 100) is not 0:
-                                    f.write('#SERVICE 1:832:d:0:0:0:0:0:0:0:\n')
+                                    f.write('{}\n'.format(PLACEHOLDER_SERVICE))
                                     channel_num += 1
                         vod_category_output = True
 
@@ -1200,16 +1267,17 @@ class Provider:
 
                             f.write('{}<!-- {} -->\n'.format(indent, xml_safe_comment(xml_escape(cat_title.encode('utf-8')))))
                             for x in self._dictchannels[cat]:
-                                tvg_id = x['tvg-id'] if x['tvg-id'] else get_service_title(x)
-                                if x['enabled']:
-                                    # force the epg channels to stream type '1'
-                                    epg_service_ref = x['serviceRef']
-                                    pos = epg_service_ref.find(':')
-                                    if pos != -1:
-                                        epg_service_ref = '1{}'.format(epg_service_ref[pos:])
-                                    f.write('{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
-                                            .format(indent, xml_escape(tvg_id.encode('utf-8')), epg_service_ref,
-                                                    xml_safe_comment(xml_escape(get_service_title(x).encode('utf-8')))))
+                                if not x['stream-name'].startswith('placeholder_'):
+                                    tvg_id = x['tvg-id'] if x['tvg-id'] else get_service_title(x)
+                                    if x['enabled']:
+                                        # force the epg channels to stream type '1'
+                                        epg_service_ref = x['serviceRef']
+                                        pos = epg_service_ref.find(':')
+                                        if pos != -1:
+                                            epg_service_ref = '1{}'.format(epg_service_ref[pos:])
+                                        f.write('{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
+                                                .format(indent, xml_escape(tvg_id.encode('utf-8')), epg_service_ref,
+                                                        xml_safe_comment(xml_escape(get_service_title(x).encode('utf-8')))))
                 f.write('</channels>\n')
 
             # create epg-importer sources file for providers feed
@@ -1219,11 +1287,62 @@ class Provider:
             for group in self.xmltv_sources_list:
                 self._create_epgimport_source(self.xmltv_sources_list[group], group)
 
+    def provider_update(self):
+        if self.provider_update_url and self.username and self.password:
+            return self._process_provider_update()
+        return False
+
+    def _process_provider_update(self):
+        """Download provider update file from url"""
+        downloaded = False
+        updated = False
+
+        path = tempfile.gettempdir()
+        filename = os.path.join(path, 'provider-{}-update.txt'.format(self.name))
+        print('\n----Downloading providers update file----')
+        print('provider update url = ', self.provider_update_url)
+        try:
+            context = ssl._create_unverified_context()
+            urllib.urlretrieve(self.provider_update_url, filename, context=context)
+            downloaded = True
+        except Exception:
+            pass  # fallback to no ssl context
+
+        if not downloaded:
+            try:
+                urllib.urlretrieve(self.provider_update_url, filename)
+            except Exception, e:
+                print('[e2m3u2b] process_provider_update error. Type:', type(e))
+                print('[e2m3u2b] process_provider_update error: ', e)
+
+        if os.path.isfile(filename):
+            try:
+                with open(filename, 'r') as f:
+                    line = f.readline().strip()
+                if line:
+                    provider_tmp = {
+                        'name': line.split(',')[0],
+                        'm3u': line.split(',')[1],
+                        'epg': line.split(',')[2],
+                    }
+                    # check we have name and m3u values
+                    if provider_tmp.get('name') and provider_tmp.get('m3u'):
+                        self.name = provider_tmp['name']
+                        self.m3u_url = provider_tmp['m3u']
+                        self.epg_url = provider_tmp.get('epg', self.epg_url)
+                        self.last_provider_update = int(time.time())
+                        updated = True
+            except IndexError, e:
+                print('[e2m3u2b] _process_provider_update error unable to read providers update file')
+
+            if not DEBUG:
+                os.remove(filename)
+        return updated
+
 
 class Config:
     def __init__(self):
-        # self.providers = OrderedDict()
-        self.providers = []
+        self.providers = OrderedDict()
 
     def make_default_config(self, configfile):
         print('Default configuration file created in {}\n'.format(os.path.join(CFGPATH, 'config.xml')))
@@ -1280,7 +1399,8 @@ class Config:
 
     def read_config(self, configfile):
         """ Read Config from file """
-        providers = []
+        self.providers = OrderedDict()
+
         tree = ET.ElementTree(file=configfile)
         for node in tree.findall('.//supplier'):
             provider = Provider()
@@ -1316,10 +1436,79 @@ class Config:
                     else node.find('bouqueturl').text.strip()
                 provider.bouquet_download = True if node.find('bouquetdownload') is not None and node.find('bouquetdownload').text == '1' else False
                 provider.bouquet_top = True if node.find('bouquettop') is not None and node.find('bouquettop').text == '1' else False
+                provider.last_provider_update = 0 if node.find('lastproviderupdate') is None or node.find('lastproviderupdate').text is None \
+                    else node.find('lastproviderupdate').text.strip()
+
+
+                # for child in node:
+                #     if (DEBUG == 1) or (TESTRUN == 1):
+                #         print('{} = {}'.format(child.tag, '' if child.text is None else child.text.strip()))
+                #
+                #     if child.tag == 'name':
+                #         provider.name = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'enabled':
+                #         if child.text is None or '0':
+                #             provider.enabled = False
+                #         elif child.text == '1':
+                #             provider.enabled = True
+                #     if child.tag == 'settingslevel':
+                #         provider.settings_level = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'm3uurl':
+                #         provider.m3u_url = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'epgurl':
+                #         provider.epg_url = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'username':
+                #         provider.username = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'password':
+                #         provider.password = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'providerupdate':
+                #         provider.provider_update_url = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'iptvtypes':
+                #         if child.text is None or '0':
+                #             provider.iptv_types = False
+                #         elif child.text == '1':
+                #             provider.iptv_types = True
+                #     if child.tag == 'streamtypetv':
+                #         provider.streamtype_tv = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'streamtypevod':
+                #         provider.streamtype_vod = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'multivod':
+                #         if child.text is None or '0':
+                #             provider.multi_vod = False
+                #         elif child.text == '1':
+                #             provider.multi_vod = True
+                #     if child.tag == 'allbouquet':
+                #         if child.text is None or '0':
+                #             provider.all_bouquet = False
+                #         elif child.text == '1':
+                #             provider.all_bouquet = True
+                #     if child.tag == 'picons':
+                #         if child.text is None or '0':
+                #             provider.picons = False
+                #         elif child.text == '1':
+                #             provider.picons = True
+                #     if child.tag == 'iconpath':
+                #         provider.icon_path = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'xcludesref':
+                #         if child.text is None or '1':
+                #             provider.sref_override = True
+                #         elif child.text == '0':
+                #             provider.sref_override = False
+                #     if child.tag == 'bouqueturl':
+                #         provider.bouquet_url = '' if child.text is None else child.text.strip()
+                #     if child.tag == 'bouquetdownload':
+                #         if child.text is None or '0':
+                #             provider.bouquet_download = False
+                #         elif child.text == '1':
+                #             provider.bouquet_download = True
+                #     if child.tag == 'bouquettop':
+                #         if child.text is None or '0':
+                #             provider.bouquet_top = False
+                #         elif child.text == '1':
+                #             provider.bouquet_top = True
 
             if provider.name:
-                providers.append(provider)
-        return providers
+                self.providers[provider.name] = provider
 
     def write_config(self):
         """Write providers to config file
@@ -1341,7 +1530,8 @@ class Config:
                 f.write('{}For elements with <![CDATA[]] enter value between empty brackets e.g. <![CDATA[mypassword]]>\r\n'.format(indent))
                 f.write('-->\r\n')
                 f.write('<config>\r\n')
-                for provider in self.providers:
+
+                for key, provider in self.providers.iteritems():
                     f.write('{}<supplier>\r\n'.format(indent))
                     f.write('{}<name>{}</name><!-- Supplier Name -->\r\n'.format(2 * indent, xml_escape(provider.name)))
                     f.write('{}<enabled>{}</enabled><!-- Enable or disable the supplier (0 or 1) -->\r\n'.format(2 * indent, '1' if provider.enabled else '0'))
@@ -1362,6 +1552,7 @@ class Config:
                     f.write('{}<bouqueturl><![CDATA[{}]]></bouqueturl><!-- (Optional) url to download providers bouquet - to map custom service references -->\r\n'.format(2 * indent, provider.bouquet_url))
                     f.write('{}<bouquetdownload>{}</bouquetdownload><!-- Download providers bouquet (uses default url) must have username and password set above - to map custom service references -->\r\n'.format(2 * indent, '1' if provider.bouquet_download else '0'))
                     f.write('{}<bouquettop>{}</bouquettop><!-- Place IPTV bouquets at top (0 or 1) -->\r\n'.format(2 * indent, '1' if provider.bouquet_top else '0'))
+                    f.write('{}<lastproviderupdate>{}</lastproviderupdate><!-- Internal use -->\r\n'.format(2 * indent, provider.last_provider_update))
                     f.write('{}</supplier>\r\n'.format(indent))
                 f.write('</config>\r\n')
         else:
@@ -1441,10 +1632,13 @@ USAGE
             print('\n********************************')
             print('E2m3u2bouquet - Config based setup')
             print('********************************\n')
-            e2um3u_config = Config()
+            e2m3u2b_config = Config()
             if os.path.isfile(os.path.join(CFGPATH, 'config.xml')):
-                e2um3u_config.providers = e2um3u_config.read_config(os.path.join(CFGPATH, 'config.xml'))
-                for provider in e2um3u_config.providers:
+                e2m3u2b_config.read_config(os.path.join(CFGPATH, 'config.xml'))
+
+                providers_updated = False
+
+                for key, provider in e2m3u2b_config.providers.iteritems():
                     if provider.enabled:
                         if provider.name.startswith('Supplier Name'):
                             print("Please enter your details in the config file in - {}".format(os.path.join(CFGPATH, 'config.xml')))
@@ -1453,17 +1647,25 @@ USAGE
                             print('\n********************************')
                             print('Config based setup - {}'.format(provider.name))
                             print('********************************\n')
+
+                            if int(time.time()) - int(provider.last_provider_update) > 21600:
+                                # wait at least 6 hours (21600s) between update checks
+                                providers_updated = provider.provider_update()
                             provider.process_provider()
                     else:
                         print('\nProvider: {} is disabled - skipping.........\n'.format(provider.name))
-                sys.exit(0)
+
+                if providers_updated:
+                    e2m3u2b_config.write_config()
+
             else:
-                e2um3u_config.make_default_config(os.path.join(CFGPATH, 'config.xml'))
+                e2m3u2b_config.make_default_config(os.path.join(CFGPATH, 'config.xml'))
                 print('Please ensure correct command line options are passed to the program \n'
                       'or populate the config file in {} \n'
                       'for help use --help\n'.format(os.path.join(CFGPATH, 'config.xml')))
                 parser.print_usage()
                 sys.exit(1)
+
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
