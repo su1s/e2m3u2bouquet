@@ -42,7 +42,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.8.0'
 __date__ = '2017-06-04'
-__updated__ = '2018-11-18'
+__updated__ = '2018-11-19'
 
 DEBUG = 0
 TESTRUN = 0
@@ -838,11 +838,7 @@ class Provider:
         self._category_order = OrderedDict((x, True) for x in sorted_categories).keys()
 
         # Check for and parse override map
-        if DEBUG:
-            print(time.time())
         self._parse_map_channels_xml()
-        if DEBUG:
-            print(time.time())
 
         # Add Service references
         # VOD won't have epg so use same service id for all VOD
@@ -1406,106 +1402,47 @@ class Config:
             provider = Provider()
 
             if node is not None:
-                provider.name = '' if node.find('name') is None or node.find('name').text is None \
-                    else node.find('name').text.strip()
-                provider.enabled = True if node.find('enabled') is not None and node.find('enabled').text == '1' else False
-                provider.settings_level = '' if node.find('settingslevel') is None or node.find('settingslevel').text is None \
-                    else node.find('settingslevel').text.strip()
-                provider.m3u_url = '' if node.find('m3uurl') is None or node.find('m3uurl').text is None \
-                    else node.find('m3uurl').text.strip()
-                provider.epg_url = '' if node.find('epgurl') is None or node.find('epgurl').text is None \
-                    else node.find('epgurl').text.strip()
-                provider.username = '' if node.find('username') is None or node.find('username').text is None \
-                    else node.find('username').text.strip()
-                provider.password = '' if node.find('password') is None or node.find('password').text is None \
-                    else node.find('password').text.strip()
-                provider.provider_update_url = '' if node.find('providerupdate') is None or node.find('providerupdate').text is None \
-                    else node.find('providerupdate').text.strip()
-                provider.iptv_types = True if node.find('iptvtypes') is not None and node.find('iptvtypes').text == '1' else False
-                provider.streamtype_tv = '' if node.find('streamtypetv') is None or node.find('streamtypetv').text is None \
-                    else node.find('streamtypetv').text.strip()
-                provider.streamtype_vod = '' if node.find('streamtypevod') is None or node.find('streamtypevod').text is None \
-                    else node.find('streamtypevod').text.strip()
-                provider.multi_vod = True if node.find('multivod') is not None and node.find('multivod').text == '1' else False
-                provider.all_bouquet = True if node.find('allbouquet') is not None and node.find('allbouquet').text == '1' else False
-                provider.picons = True if node.find('picons') is not None and node.find('picons').text == '1' else False
-                provider.icon_path = '' if node.find('iconpath') is None or node.find('iconpath').text is None \
-                    else node.find('iconpath').text.strip()
-                provider.sref_override = True if node.find('xcludesref') is not None and node.find('xcludesref').text == '0' else False
-                provider.bouquet_url = '' if node.find('bouqueturl') is None or node.find('bouqueturl').text is None \
-                    else node.find('bouqueturl').text.strip()
-                provider.bouquet_download = True if node.find('bouquetdownload') is not None and node.find('bouquetdownload').text == '1' else False
-                provider.bouquet_top = True if node.find('bouquettop') is not None and node.find('bouquettop').text == '1' else False
-                provider.last_provider_update = 0 if node.find('lastproviderupdate') is None or node.find('lastproviderupdate').text is None \
-                    else node.find('lastproviderupdate').text.strip()
-
-
-                # for child in node:
-                #     if (DEBUG == 1) or (TESTRUN == 1):
-                #         print('{} = {}'.format(child.tag, '' if child.text is None else child.text.strip()))
-                #
-                #     if child.tag == 'name':
-                #         provider.name = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'enabled':
-                #         if child.text is None or '0':
-                #             provider.enabled = False
-                #         elif child.text == '1':
-                #             provider.enabled = True
-                #     if child.tag == 'settingslevel':
-                #         provider.settings_level = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'm3uurl':
-                #         provider.m3u_url = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'epgurl':
-                #         provider.epg_url = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'username':
-                #         provider.username = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'password':
-                #         provider.password = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'providerupdate':
-                #         provider.provider_update_url = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'iptvtypes':
-                #         if child.text is None or '0':
-                #             provider.iptv_types = False
-                #         elif child.text == '1':
-                #             provider.iptv_types = True
-                #     if child.tag == 'streamtypetv':
-                #         provider.streamtype_tv = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'streamtypevod':
-                #         provider.streamtype_vod = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'multivod':
-                #         if child.text is None or '0':
-                #             provider.multi_vod = False
-                #         elif child.text == '1':
-                #             provider.multi_vod = True
-                #     if child.tag == 'allbouquet':
-                #         if child.text is None or '0':
-                #             provider.all_bouquet = False
-                #         elif child.text == '1':
-                #             provider.all_bouquet = True
-                #     if child.tag == 'picons':
-                #         if child.text is None or '0':
-                #             provider.picons = False
-                #         elif child.text == '1':
-                #             provider.picons = True
-                #     if child.tag == 'iconpath':
-                #         provider.icon_path = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'xcludesref':
-                #         if child.text is None or '1':
-                #             provider.sref_override = True
-                #         elif child.text == '0':
-                #             provider.sref_override = False
-                #     if child.tag == 'bouqueturl':
-                #         provider.bouquet_url = '' if child.text is None else child.text.strip()
-                #     if child.tag == 'bouquetdownload':
-                #         if child.text is None or '0':
-                #             provider.bouquet_download = False
-                #         elif child.text == '1':
-                #             provider.bouquet_download = True
-                #     if child.tag == 'bouquettop':
-                #         if child.text is None or '0':
-                #             provider.bouquet_top = False
-                #         elif child.text == '1':
-                #             provider.bouquet_top = True
+                for child in node:
+                    if child.tag == 'name':
+                        provider.name = '' if child.text is None else child.text.strip()
+                    if child.tag == 'enabled':
+                        provider.enabled = True if child.text == '1' else False
+                    if child.tag == 'settingslevel':
+                        provider.settings_level = '' if child.text is None else child.text.strip()
+                    if child.tag == 'm3uurl':
+                        provider.m3u_url = '' if child.text is None else child.text.strip()
+                    if child.tag == 'epgurl':
+                        provider.epg_url = '' if child.text is None else child.text.strip()
+                    if child.tag == 'username':
+                        provider.username = '' if child.text is None else child.text.strip()
+                    if child.tag == 'password':
+                        provider.password = '' if child.text is None else child.text.strip()
+                    if child.tag == 'providerupdate':
+                        provider.provider_update_url = '' if child.text is None else child.text.strip()
+                    if child.tag == 'iptvtypes':
+                        provider.iptv_types = True if child.text == '1' else False
+                    if child.tag == 'streamtypetv':
+                        provider.streamtype_tv = '' if child.text is None else child.text.strip()
+                    if child.tag == 'streamtypevod':
+                        provider.streamtype_vod = '' if child.text is None else child.text.strip()
+                    if child.tag == 'multivod':
+                        provider.multi_vod = True if child.text == '1' else False
+                    if child.tag == 'allbouquet':
+                        provider.all_bouquet = True if child.text == '1' else False
+                    if child.tag == 'picons':
+                        provider.picons = True if child.text == '1' else False
+                    if child.tag == 'iconpath':
+                        provider.icon_path = '' if child.text is None else child.text.strip()
+                    if child.tag == 'xcludesref':
+                        provider.sref_override = True if child.text == '0' else False
+                    if child.tag == 'bouqueturl':
+                        provider.bouquet_url = '' if child.text is None else child.text.strip()
+                    if child.tag == 'bouquetdownload':
+                        provider.bouquet_download = True if child.text == '1' else False
+                    if child.tag == 'bouquettop':
+                        provider.bouquet_top = True if child.text == '1' else False
+                    if child.tag == 'lastproviderupdate':
+                        provider.last_provider_update = 0 if child.text is None else child.text.strip()
 
             if provider.name:
                 self.providers[provider.name] = provider
@@ -1635,7 +1572,6 @@ USAGE
             e2m3u2b_config = Config()
             if os.path.isfile(os.path.join(CFGPATH, 'config.xml')):
                 e2m3u2b_config.read_config(os.path.join(CFGPATH, 'config.xml'))
-
                 providers_updated = False
 
                 for key, provider in e2m3u2b_config.providers.iteritems():
