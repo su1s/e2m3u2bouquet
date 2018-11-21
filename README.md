@@ -4,7 +4,7 @@ Latest release can be downloaded from [releases](https://github.com/su1s/e2m3u2b
 
 ## Usage
 ```
-usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL]
+usage: e2m3u2bouquet.py [-h] [-m M3UURL] [-e EPGURL] [-n PROVIDERNAME]
                         [-u USERNAME] [-p PASSWORD] [-i] [-sttv STTV]
                         [-stvod STVOD] [-M] [-a] [-P] [-q ICONPATH] [-xs]
                         [-b BOUQUETURL] [-bd] [-bt] [-U] [-V]
@@ -54,6 +54,9 @@ URL Based Setup:
   -e EPGURL, --epgurl EPGURL
                         URL source for XML TV epg data sources
 
+  -n PROVIDERNAME, --providername PROVIDERNAME
+                        Host IPTV provider name
+
 Config file based setup
                         No parameters required
                         The script will create a default config file
@@ -91,7 +94,7 @@ Run the script passing the url for your m3u file and the url for your providers 
 ```
 **NB: you need to replace the username and password values X 2**
 
-If you are with a different provider the script should work but you will obviously need the m3u url (1st parameter) and XML TV url (2nd parameter) for your own provider. Please note the m3u file needs to be the “extended” version if you have the option.
+If you are with a different provider the script should work but you will obviously need the m3u url (1st parameter) and XML TV url (2nd parameter) for your own provider. Please note the m3u file needs to be the "extended" version if you have the option.
 
 ## Config File Setup
 No parameters required, just run the script
@@ -104,7 +107,7 @@ IPTV providers details need to be entered into this file before running the scri
 Note: Multiple IPTV providers can be supported via the config.xml
 
 ## For Picon Download Support
-Add -P and optionally -q /path/to/picon/folder/ if you don’t store your picons in the default location. The default location
+Add -P and optionally -q /path/to/picon/folder/ if you don't store your picons in the default location. The default location
 is `/usr/share/enigma2/picon/` (internal flash) other enigma2 picon search location are `/media/usb/picon/` & `/media/hdd/picon/`.
 
 N.B. If you store the picons on HDD it was spin up whenever they are shown
@@ -131,7 +134,7 @@ Default is DVB stream types for live channels and IPTV for VOD, all IPTV type st
 ```
 
 ## Importing EPG Data
-* Open EPG-Importer plugin (download it if you haven’t already got it)
+* Open EPG-Importer plugin (download it if you haven't already got it)
 * Select sources (Blue button on OpenVix)
 * Enable the source created by the script (e2m3u2bouquet / FAB / EPIC)
 * Kick off a manual EPG import
@@ -221,7 +224,7 @@ which makes editing the crontab easier)
 * Update service number to use numbers unlikely to be in use by existing sat services
 * Leave service number gaps between categories to reduce the effect of playlist additions cause the epg to get out of sync
 #### v0.4.2
-* Fixed error for ACE and FLAWLESS users where “:” in category put the box into an infinite loop
+* Fixed error for ACE and FLAWLESS users where ":" in category put the box into an infinite loop
 #### v0.5
 * Custom mapping feature
   * Reorder bouquets
@@ -312,5 +315,19 @@ which makes editing the crontab easier)
 
 ### v0.7.7
 * Set extensionless streams as live TV
+
+### v0.8
+* When providers bouquet is downloaded (-b or -bd option) now uses full service references
+  instead of just the epg relevant part in case it's used for picon naming
+* Better multi provider handler e.g. if there is an issue with one provider it
+  won't stop the script processing others
+* If vod categories are out of order in the playlist group together
+* Fix file naming issues with non alphanumeric characters
+* Much faster when using an override file :)
+* Don't retry failed picon downloads
+* Option to add placeholder channel in override file (to control channel numbering)
+* Allow channels to be moved between categories, use categoryOverride in the override file
+* All custom categories, use customCategory="true" in the override file
+* Add provider managed update support
 
 Visit https://www.suls.co.uk/enigma2-iptv-bouquets-with-epg/ for further information on the script
