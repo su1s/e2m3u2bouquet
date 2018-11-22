@@ -76,7 +76,7 @@ opkg install python-image python-imaging python-argparse
 ```
 
 ## How to install
-* FTP the e2m3u2bouquet.py to your engima2 box (i would suggest to /etc/enigma2/e2m3u2bouquet)
+* FTP the e2m3u2bouquet.py to your engima2 box (I would suggest to /etc/enigma2/e2m3u2bouquet)
 * SSH to your enigma2 box (using putty or something similar)
 * CD to the correct directory if you are not already there
 ```
@@ -88,7 +88,7 @@ chmod 755 e2m3u2bouquet.py
 ```
 
 ## URL Based Setup
-Run the script passing the url for your m3u file and the url for your providers XML TV data feed (for FAB hosting the below works)
+Run the script passing the url for your m3u file and the url for your providers XML TV data feed
 ```
 ./e2m3u2bouquet.py -m "http://provider_url/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://provider_url/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
 ```
@@ -136,7 +136,7 @@ Default is DVB stream types for live channels and IPTV for VOD, all IPTV type st
 ## Importing EPG Data
 * Open EPG-Importer plugin (download it if you haven't already got it)
 * Select sources (Blue button on OpenVix)
-* Enable the source created by the script (e2m3u2bouquet / FAB / EPIC)
+* Enable the source created by the script (listed under IPTV Bouquet Maker - E2m3u2bouquet)
 * Kick off a manual EPG import
 
 ## Updating Channels
@@ -155,7 +155,7 @@ crontab -e
 Once open press i to switch to INSERT mode enter the following (retype or ctrl-v to paste)
 This will automatically run the script at 06:00 & 18:00 every day
 ```
-0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py -m "http://stream.fabiptv.com:25461/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://stream.fabiptv.com:25461/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
+0 6,18 * * * /etc/enigma2/e2m3u2bouquet/e2m3u2bouquet.py -m "http://provider_url/get.php?username=YOURUSERNAME&password=YOURPASSWORD&type=m3u_plus&output=ts" -e "http://provider_url/xmltv.php?username=YOURUSERNAME&password=YOURPASSWORD"
 ```
 or
 ```
@@ -180,8 +180,8 @@ which makes editing the crontab easier)
 * Ensure that cron Autostart is active
 
 ## Custom Mapping
-* Run the script once. It will create `e2m3u2bouquet-sort-current.xml`
-* FTP `e2m3u2bouquet-sort-current.xml` to your machine and rename it `e2m3u2bouquet-sort-override.xml`
+* Run the script once. It will create `provider_name-sort-current.xml`
+* FTP `provider_name-sort-current.xml` to your machine and rename it `provider_name-sort-override.xml`
 * For custom bouquet order move the `<category` lines within `<mapping> -> <categories>`
 * To disable a bouquet change `enabled="true"` to `enabled="false"`
 * For custom channel ordering within a bouquet move the `<channel` lines within `<mapping> -> <channels>`
@@ -189,7 +189,7 @@ which makes editing the crontab easier)
 * To change the id used for XML EPG mapping update the `tvg-id` attribute
 * To change the service ref (e.g. to map to an existing satellite EPG feed) change the `serviceRef` attribute
   * For example to use the Channel 4 HD DVB-S EPG you would set the serviceRef to "1:0:1:**52D0:814:2:11A0000**:0:0:0" (part in bold SID:TID:NID:Namespace needs to match). If you match a DVB service and also set the streamUrl to blank the DVB service will replace the IPTV service
-* FTP `e2m3u2bouquet-sort-override.xml` to your box
+* FTP `provider_name-sort-override.xml` to your box
 * Run the script again and the changes made will be applied
 
 ## Change notes

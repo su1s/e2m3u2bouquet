@@ -42,7 +42,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.8.0'
 __date__ = '2017-06-04'
-__updated__ = '2018-11-19'
+__updated__ = '2018-11-22'
 
 DEBUG = 0
 TESTRUN = 0
@@ -418,7 +418,7 @@ class Provider:
                 dictoption['idStart'] = int(node.attrib.get('idStart', '0')) \
                     if node.attrib.get('idStart', '0').isdigit() else 0
                 if node.attrib.get('enabled') == 'false':
-                    dictoption["enabled"] = False
+                    dictoption['enabled'] = False
                     # Remove category/bouquet
                     if category != "VOD":
                         if category in self._dictchannels:
@@ -438,6 +438,7 @@ class Provider:
                     # If this category is marked as custom and doesn't exist in self._dictchannels then add
                     is_custom_category = node.attrib.get('customCategory', '')
                     if is_custom_category == 'true':
+                        dictoption['customCategory'] = 'true'
                         if category not in self._dictchannels:
                             self._dictchannels[category] = []
 
@@ -796,7 +797,7 @@ class Provider:
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
                     service_dict = {'tvg-id': '', 'tvg-name': '', 'tvg-logo': '', 'group-title': '', 'stream-name': '',
-                                    'stream-url': '', 'enabled': True, 'nameOverride': '', 'categoryOverride' : '',
+                                    'stream-url': '', 'enabled': True, 'nameOverride': '', 'categoryOverride': '',
                                     'serviceRef': '', 'serviceRefOverride': False
                                     }
                     if line.find('tvg-') == -1:
@@ -1080,11 +1081,12 @@ class Provider:
                             if cat in self._category_options:
                                 cat_title_override = self._category_options[cat].get('nameOverride', '')
                                 idStart = self._category_options[cat].get('idStart', '')
-                            f.write('{}<category name="{}" nameOverride="{}" idStart="{}" enabled="true" />\r\n'
+                            f.write('{}<category name="{}" nameOverride="{}" idStart="{}" enabled="true" customCategory="{}"/>\r\n'
                                     .format(2 * indent,
                                             xml_escape(cat).encode('utf-8'),
                                             xml_escape(cat_title_override).encode('utf-8'),
-                                            idStart
+                                            idStart,
+                                            self._category_options[cat].get('customCategory', 'false')
                                             ))
                         elif not vod_category_output:
                             # Replace multivod categories with single VOD placeholder
@@ -1121,7 +1123,6 @@ class Provider:
                                                     xml_escape(x.get('nameOverride', '').encode('utf-8')),
                                                     xml_escape(x['tvg-id'].encode('utf-8')),
                                                     str(x['enabled']).lower(),
-                                                    #xml_escape(cat.encode('utf-8')),
                                                     xml_escape(x['group-title'].encode('utf-8')),
                                                     xml_escape(x.get('categoryOverride', '').encode('utf-8')),
                                                     xml_escape(x['serviceRef']),
