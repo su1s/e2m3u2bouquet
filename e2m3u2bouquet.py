@@ -737,7 +737,7 @@ class Provider:
             # reload bouquets
             reload_bouquets()
             print("\n********************************")
-            print("Engima2 IPTV bouquets created ! ")
+            print("Enigma2 IPTV bouquets created ! ")
             print("********************************")
             print("\nTo enable EPG data")
             print("Please open EPG-Importer plugin.. ")
