@@ -382,7 +382,7 @@ class Provider:
         root, ext = os.path.splitext(parsed_stream_url.path)
 
         # check for vod streams ending .*.m3u8 e.g. 2345.mp4.m3u8
-        is_m3u8_vod = re.search('\..+\.m3u8$', parsed_stream_url.path)
+        is_m3u8_vod = re.search('\.[^/]+\.m3u8$', parsed_stream_url.path)
 
         if (parsed_stream_url.path.endswith('.ts') or parsed_stream_url.path.endswith('.m3u8')) \
                 or not ext \
