@@ -65,7 +65,7 @@ Config file based setup
                         running the script again
 ```
 
-## Pre Requisites
+## Prerequisites
 EPG-Importer plugin is required. This should be available in the plugin feed or already installed.
 
 N.B. OpenPLi may need additional packages installed. If you attempt to run the script and get an error about
@@ -76,7 +76,7 @@ opkg install python-image python-imaging python-argparse
 ```
 
 ## How to install
-* FTP the e2m3u2bouquet.py to your engima2 box (I would suggest to /etc/enigma2/e2m3u2bouquet)
+* FTP the e2m3u2bouquet.py to your enigma2 box (I would suggest to /etc/enigma2/e2m3u2bouquet)
 * SSH to your enigma2 box (using putty or something similar)
 * CD to the correct directory if you are not already there
 ```
