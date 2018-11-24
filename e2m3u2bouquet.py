@@ -42,7 +42,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.8.0'
 __date__ = '2017-06-04'
-__updated__ = '2018-11-24'
+__updated__ = '2018-11-22'
 
 DEBUG = 0
 TESTRUN = 0
@@ -382,7 +382,7 @@ class Provider:
         root, ext = os.path.splitext(parsed_stream_url.path)
 
         # check for vod streams ending .*.m3u8 e.g. 2345.mp4.m3u8
-        is_m3u8_vod = re.search('\.[^/]+\.m3u8$', parsed_stream_url.path)
+        is_m3u8_vod = re.search('\..+\.m3u8$', parsed_stream_url.path)
 
         if (parsed_stream_url.path.endswith('.ts') or parsed_stream_url.path.endswith('.m3u8')) \
                 or not ext \
@@ -737,7 +737,7 @@ class Provider:
             # reload bouquets
             reload_bouquets()
             print("\n********************************")
-            print("Enigma2 IPTV bouquets created ! ")
+            print("Engima2 IPTV bouquets created ! ")
             print("********************************")
             print("\nTo enable EPG data")
             print("Please open EPG-Importer plugin.. ")
@@ -1602,6 +1602,7 @@ USAGE
                       'for help use --help\n'.format(os.path.join(CFGPATH, 'config.xml')))
                 parser.print_usage()
                 sys.exit(1)
+
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
