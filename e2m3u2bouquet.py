@@ -42,7 +42,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.8.0'
 __date__ = '2017-06-04'
-__updated__ = '2018-11-24'
+__updated__ = '2018-11-27'
 
 DEBUG = 0
 TESTRUN = 0
@@ -79,6 +79,7 @@ def display_welcome():
     print('Starting Enigma2 IPTV bouquets v{}'.format(__version__))
     print(str(datetime.datetime.now()))
     print("********************************\n")
+
 
 def make_config_folder():
     """create config folder if it doesn't exist
@@ -256,7 +257,6 @@ class Provider:
         self.bouquet_top = False
         self.last_provider_update = 0
 
-
     def _download_picon_file(self, logo_url, title):
         if logo_url:
             if not logo_url.startswith('http'):
@@ -417,30 +417,16 @@ class Provider:
                 dictoption['nameOverride'] = cat_title_override
                 dictoption['idStart'] = int(node.attrib.get('idStart', '0')) \
                     if node.attrib.get('idStart', '0').isdigit() else 0
-                if node.attrib.get('enabled') == 'false':
-                    dictoption['enabled'] = False
-                    # Remove category/bouquet
-                    if category != "VOD":
-                        if category in self._dictchannels:
-                            self._dictchannels.pop(category, None)
-                    else:
-                        keys_to_remove = []
-                        for k in self._dictchannels.iterkeys():
-                            if k.startswith("VOD"):
-                                keys_to_remove.append(k)
-                        if keys_to_remove:
-                            for k in keys_to_remove:
-                                self._dictchannels.pop(k, None)
-                else:
-                    dictoption["enabled"] = True
-                    category_order.append(category)
 
-                    # If this category is marked as custom and doesn't exist in self._dictchannels then add
-                    is_custom_category = node.attrib.get('customCategory', '')
-                    if is_custom_category == 'true':
-                        dictoption['customCategory'] = 'true'
-                        if category not in self._dictchannels:
-                            self._dictchannels[category] = []
+                dictoption['enabled'] = node.attrib.get('enabled', True) == 'true'
+                category_order.append(category)
+
+                # If this category is marked as custom and doesn't exist in self._dictchannels then add
+                is_custom_category = node.attrib.get('customCategory', False) == 'true'
+                if is_custom_category:
+                    dictoption['customCategory'] = True
+                    if category not in self._dictchannels:
+                        self._dictchannels[category] = []
 
                 self._category_options[category] = dictoption
 
@@ -707,8 +693,7 @@ class Provider:
             # set bouquet_url to default url
             pos = self.m3u_url.find('get.php')
             if pos != -1:
-                self.bouquet_url = self.m3u_url[
-                                       0:pos + 7] + '?username={}&password={}&type=dreambox&output=ts'.format(
+                self.bouquet_url = self.m3u_url[0:pos + 7] + '?username={}&password={}&type=dreambox&output=ts'.format(
                     urllib.quote_plus(self.username), urllib.quote_plus(self.password))
 
         # Download panel bouquet
@@ -1076,36 +1061,29 @@ class Provider:
                 for cat in self._category_order:
                     if cat in self._dictchannels:
                         if not cat.startswith('VOD -'):
-                            cat_title_override = ''
-                            idStart = ''
-                            if cat in self._category_options:
-                                cat_title_override = self._category_options[cat].get('nameOverride', '')
-                                idStart = self._category_options[cat].get('idStart', '')
-                            f.write('{}<category name="{}" nameOverride="{}" idStart="{}" enabled="true" customCategory="{}"/>\r\n'
+                            cat_title_override = self._category_options[cat].get('nameOverride', '')
+                            f.write('{}<category name="{}" nameOverride="{}" idStart="{}" enabled="{}" customCategory="{}"/>\r\n'
                                     .format(2 * indent,
                                             xml_escape(cat).encode('utf-8'),
                                             xml_escape(cat_title_override).encode('utf-8'),
-                                            idStart,
-                                            self._category_options[cat].get('customCategory', 'false')
+                                            self._category_options[cat].get('idStart', ''),
+                                            str(self._category_options[cat].get('enabled', True)).lower(),
+                                            str(self._category_options[cat].get('customCategory', False)).lower()
                                             ))
                         elif not vod_category_output:
                             # Replace multivod categories with single VOD placeholder
                             cat_title_override = ''
+                            cat_enabled = True
                             if 'VOD' in self._category_options:
                                 cat_title_override = self._category_options['VOD'].get('nameOverride', '')
-                            f.write('{}<category name="{}" nameOverride="{}" enabled="true" />\r\n'
+                                cat_enabled = self._category_options['VOD'].get('enabled', True)
+                            f.write('{}<category name="{}" nameOverride="{}" enabled="{}" />\r\n'
                                     .format(2 * indent,
                                             'VOD',
                                             xml_escape(cat_title_override).encode('utf-8'),
+                                            str(cat_enabled).lower()
                                             ))
                             vod_category_output = True
-                for cat in self._category_options:
-                    if 'enabled' in self._category_options[cat] and self._category_options[cat]['enabled'] is False:
-                        f.write('{}<category name="{}" nameOverride="{}" enabled="false" />\r\n'
-                                .format(2 * indent,
-                                        xml_escape(cat).encode("utf-8"),
-                                        xml_escape(cat_title_override).encode("utf-8")
-                                        ))
 
                 f.write('{}</categories>\r\n'.format(indent))
 
@@ -1159,7 +1137,12 @@ class Provider:
         channel_number_start_offset_output = False
 
         for cat in self._category_order:
-            if cat in self._dictchannels:
+            if not cat.startswith('VOD -'):
+                cat_enabled = self._category_options.get(cat, {}).get('enabled', True)
+            else:
+                cat_enabled = self._category_options.get('VOD', {}).get('enabled', True)
+
+            if cat in self._dictchannels and cat_enabled:
                 cat_title = get_category_title(cat, self._category_options)
                 # create file
                 cat_filename = get_safe_filename(cat_title)
@@ -1258,7 +1241,7 @@ class Provider:
             with open(channels_filename, "w+") as f:
                 f.write('<channels>\n')
                 for cat in self._category_order:
-                    if cat in self._dictchannels:
+                    if cat in self._dictchannels and self._category_options.get(cat, {}).get('enabled', True):
                         if not cat.startswith('VOD'):
                             cat_title = get_category_title(cat, self._category_options)
 
