@@ -1,0 +1,30 @@
+<!--
+ E2m3u2bouquet supplier config file
+ Add as many suppliers as required
+ this config file will be used and the relevant bouquets set up for all suppliers entered
+ 0 = No/False
+ 1 = Yes/True
+ For elements with <![CDATA[]] enter value between empty brackets e.g. <![CDATA[mypassword]]>
+-->
+<config>
+    <supplier>
+        <name>IPTV</name><!-- Supplier Name -->
+        <enabled>1</enabled><!-- Enable or disable the supplier (0 or 1) -->
+        <settingslevel>simple</settingslevel>
+        <m3uurl><![CDATA[http://hhhhh/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts]]></m3uurl><!-- Extended M3U url --> 
+        <epgurl><![CDATA[http://hhhhh/xmltv.php?username=USERNAME&password=PASSWORD]]></epgurl><!-- XMLTV EPG url -->
+        <username><![CDATA[uuuuu]]></username><!-- (Optional) will replace USERNAME placeholder in urls -->
+        <password><![CDATA[ppppp]]></password><!-- (Optional) will replace PASSWORD placeholder in urls -->
+        <providerupdate><![CDATA[]]></providerupdate><!-- (Optional) Provider update url -->
+        <iptvtypes>0</iptvtypes><!-- Change all TV streams to IPTV type (0 or 1) -->
+        <streamtypetv></streamtypetv><!-- (Optional) Custom TV stream type (e.g. 1, 4097, 5001 or 5002 -->
+        <streamtypevod></streamtypevod><!-- (Optional) Custom VOD stream type (e.g. 4097, 5001 or 5002 -->
+        <multivod>0</multivod><!-- Split VOD into seperate categories (0 or 1) -->
+        <allbouquet>0</allbouquet><!-- Create all channels bouquet (0 or 1) -->
+        <picons>0</picons><!-- Automatically download Picons (0 or 1) -->
+        <xcludesref>1</xcludesref><!-- Disable service ref overriding from override.xml file (0 or 1) -->
+        <bouqueturl><![CDATA[]]></bouqueturl><!-- (Optional) url to download providers bouquet - to map custom service references -->
+        <bouquetdownload>0</bouquetdownload><!-- Download providers bouquet (uses default url) must have username and password set above - to map custom service references -->
+        <bouquettop>0</bouquettop><!-- Place IPTV bouquets at top (0 or 1) -->
+    </supplier>
+</config>

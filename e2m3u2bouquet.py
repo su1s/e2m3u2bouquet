@@ -40,7 +40,7 @@ from argparse import RawDescriptionHelpFormatter
 __all__ = []
 __version__ = '0.8.0'
 __date__ = '2017-06-04'
-__updated__ = '2018-12-03'
+__updated__ = '2018-12-08'
 
 DEBUG = 0
 TESTRUN = 0
@@ -423,34 +423,41 @@ class Provider:
             self._update_status('----Parsing custom bouquet order----')
             print('\n'.format(Status.message))
 
-            tree = ET.ElementTree(file=mapping_file)
-            for node in tree.findall(".//category"):
-                dictoption = {}
+            try:
+                tree = ET.ElementTree(file=mapping_file)
+                for node in tree.findall(".//category"):
+                    dictoption = {}
 
-                category = node.attrib.get('name')
-                if not type(category) is unicode:
-                    category = category.decode("utf-8")
-                cat_title_override = node.attrib.get('nameOverride', '')
-                if not type(cat_title_override) is unicode:
-                    cat_title_override = cat_title_override.decode("utf-8")
-                dictoption['nameOverride'] = cat_title_override
-                dictoption['idStart'] = int(node.attrib.get('idStart', '0')) \
-                    if node.attrib.get('idStart', '0').isdigit() else 0
+                    category = node.attrib.get('name')
+                    if not type(category) is unicode:
+                        category = category.decode("utf-8")
+                    cat_title_override = node.attrib.get('nameOverride', '')
+                    if not type(cat_title_override) is unicode:
+                        cat_title_override = cat_title_override.decode("utf-8")
+                    dictoption['nameOverride'] = cat_title_override
+                    dictoption['idStart'] = int(node.attrib.get('idStart', '0')) \
+                        if node.attrib.get('idStart', '0').isdigit() else 0
 
-                dictoption['enabled'] = node.attrib.get('enabled', True) == 'true'
-                category_order.append(category)
+                    dictoption['enabled'] = node.attrib.get('enabled', True) == 'true'
+                    category_order.append(category)
 
-                # If this category is marked as custom and doesn't exist in self._dictchannels then add
-                is_custom_category = node.attrib.get('customCategory', False) == 'true'
-                if is_custom_category:
-                    dictoption['customCategory'] = True
-                    if category not in self._dictchannels:
-                        self._dictchannels[category] = []
+                    # If this category is marked as custom and doesn't exist in self._dictchannels then add
+                    is_custom_category = node.attrib.get('customCategory', False) == 'true'
+                    if is_custom_category:
+                        dictoption['customCategory'] = True
+                        if category not in self._dictchannels:
+                            self._dictchannels[category] = []
 
-                self._category_options[category] = dictoption
+                    self._category_options[category] = dictoption
 
-            self._update_status('custom bouquet order applied...')
-            print(Status.message)
+                self._update_status('custom bouquet order applied...')
+                print(Status.message)
+            except Exception, e:
+                msg = 'Corrupt override.xml file'
+                print(msg)
+                if DEBUG:
+                    raise msg
+
         return category_order
 
     def _parse_map_channels_xml(self):
@@ -461,97 +468,104 @@ class Provider:
             self._update_status('----Parsing custom channel order, please be patient----')
             print('\n{}'.format(Status.message))
 
-            tree = ET.ElementTree(file=mapping_file)
-            i = 0
-            for cat in self._dictchannels:
-                if not cat.startswith("VOD"):
-                    # We don't override any individual VOD streams
-                    sortedchannels = []
-                    listchannels = []
+            try:
+                tree = ET.ElementTree(file=mapping_file)
+                i = 0
+                for cat in self._dictchannels:
+                    if not cat.startswith("VOD"):
+                        # We don't override any individual VOD streams
+                        sortedchannels = []
+                        listchannels = []
 
-                    # find channels that are to be moved to this category (categoryOverride)
-                    for node in tree.findall(u'.//channel[@categoryOverride="{}"]'.format(cat)):
-                        node_name = node.attrib.get('name')
-                        category = node.attrib.get('category')
-                        channel_index = None
+                        # find channels that are to be moved to this category (categoryOverride)
+                        for node in tree.findall(u'.//channel[@categoryOverride="{}"]'.format(cat)):
+                            node_name = node.attrib.get('name')
+                            category = node.attrib.get('category')
+                            channel_index = None
 
-                        # get index of channel in the current category
+                            # get index of channel in the current category
+                            try:
+                                channel_index = next((self._dictchannels[category].index(item) for item in self._dictchannels[category]
+                                                      if item['stream-name'] == node_name), None)
+                            except KeyError:
+                                pass
+
+                            if channel_index is not None:
+                                # remove from existing category and add to new
+                                self._dictchannels[cat].append(self._dictchannels[category].pop(channel_index))
+
+                        for x in self._dictchannels[cat]:
+                            listchannels.append(x['stream-name'])
+
+                        for node in tree.findall(u'.//channel[@category="{}"]'.format(cat)):
+                            # Check for placeholders, give unique name, insert into sorted channels and dictchannels[cat]
+                            node_name = node.attrib.get('name')
+
+                            if node_name == 'placeholder':
+                                node_name = 'placeholder_' + str(i)
+                                listchannels.append(node_name)
+                                self._dictchannels[cat].append({'stream-name': node_name})
+                                i += 1
+                            sortedchannels.append(node_name)
+
+                        sortedchannels.extend(listchannels)
+                        # remove duplicates, keep order
+                        listchannels = OrderedDict((x, True) for x in sortedchannels).keys()
+
+                        # sort the channels by new order
+                        channel_order_dict = {channel: index for index, channel in enumerate(listchannels)}
+                        self._dictchannels[cat].sort(key=lambda x: channel_order_dict[x['stream-name']])
+                self._update_status('custom channel order applied...')
+                print(Status.message)
+
+                # apply overrides
+                channel_nodes = tree.iter('channel')
+                for override_channel in channel_nodes:
+                    name = override_channel.attrib.get('name')
+                    category = override_channel.attrib.get('category')
+                    category_override = override_channel.attrib.get('categoryOverride')
+                    channel_index = None
+                    channels_list = None
+
+                    if category_override:
+                        # check if the channel has been moved to the new category
                         try:
-                            channel_index = next((self._dictchannels[category].index(item) for item in self._dictchannels[category]
-                                                  if item['stream-name'] == node_name), None)
+                            channel_index = next((self._dictchannels[category_override].index(item) for item in self._dictchannels[category_override]
+                                              if item['stream-name'] == name), None)
                         except KeyError:
                             pass
 
-                        if channel_index is not None:
-                            # remove from existing category and add to new
-                            self._dictchannels[cat].append(self._dictchannels[category].pop(channel_index))
+                    if category_override and channel_index is not None:
+                        channels_list = self._dictchannels.get(category_override)
+                    else:
+                        channels_list = self._dictchannels.get(category)
 
-                    for x in self._dictchannels[cat]:
-                        listchannels.append(x['stream-name'])
+                    if channels_list is not None and name != 'placeholder':
+                        for x in channels_list:
+                            if x['stream-name'] == name:
+                                if override_channel.attrib.get('enabled') == 'false':
+                                    x['enabled'] = False
+                                x['nameOverride'] = override_channel.attrib.get('nameOverride', '')
+                                x['categoryOverride'] = override_channel.attrib.get('categoryOverride', '')
+                                # default to current values if attribute doesn't exist
+                                x['tvg-id'] = override_channel.attrib.get('tvg-id', x['tvg-id'])
+                                if override_channel.attrib.get('serviceRef', None) and self.config.sref_override:
+                                    x['serviceRef'] = override_channel.attrib.get('serviceRef', x['serviceRef'])
+                                    x['serviceRefOverride'] = True
+                                # streamUrl no longer output to xml file but we still check and process it
+                                x['stream-url'] = override_channel.attrib.get('streamUrl', x['stream-url'])
+                                clear_stream_url = override_channel.attrib.get('clearStreamUrl') == 'true'
+                                if clear_stream_url:
+                                    x['stream-url'] = ''
+                                break
+                self._update_status('custom overrides applied...')
+                print(Status.message)
+            except Exception, e:
+                msg = 'Corrupt override.xml file'
+                print(msg)
+                if DEBUG:
+                    raise msg
 
-                    for node in tree.findall(u'.//channel[@category="{}"]'.format(cat)):
-                        # Check for placeholders, give unique name, insert into sorted channels and dictchannels[cat]
-                        node_name = node.attrib.get('name')
-
-                        if node_name == 'placeholder':
-                            node_name = 'placeholder_' + str(i)
-                            listchannels.append(node_name)
-                            self._dictchannels[cat].append({'stream-name': node_name})
-                            i += 1
-                        sortedchannels.append(node_name)
-
-                    sortedchannels.extend(listchannels)
-                    # remove duplicates, keep order
-                    listchannels = OrderedDict((x, True) for x in sortedchannels).keys()
-
-                    # sort the channels by new order
-                    channel_order_dict = {channel: index for index, channel in enumerate(listchannels)}
-                    self._dictchannels[cat].sort(key=lambda x: channel_order_dict[x['stream-name']])
-            self._update_status('custom channel order applied...')
-            print(Status.message)
-
-            # apply overrides
-            channel_nodes = tree.iter('channel')
-            for override_channel in channel_nodes:
-                name = override_channel.attrib.get('name')
-                category = override_channel.attrib.get('category')
-                category_override = override_channel.attrib.get('categoryOverride')
-                channel_index = None
-                channels_list = None
-
-                if category_override:
-                    # check if the channel has been moved to the new category
-                    try:
-                        channel_index = next((self._dictchannels[category_override].index(item) for item in self._dictchannels[category_override]
-                                          if item['stream-name'] == name), None)
-                    except KeyError:
-                        pass
-
-                if category_override and channel_index is not None:
-                    channels_list = self._dictchannels.get(category_override)
-                else:
-                    channels_list = self._dictchannels.get(category)
-
-                if channels_list is not None and name != 'placeholder':
-                    for x in channels_list:
-                        if x['stream-name'] == name:
-                            if override_channel.attrib.get('enabled') == 'false':
-                                x['enabled'] = False
-                            x['nameOverride'] = override_channel.attrib.get('nameOverride', '')
-                            x['categoryOverride'] = override_channel.attrib.get('categoryOverride', '')
-                            # default to current values if attribute doesn't exist
-                            x['tvg-id'] = override_channel.attrib.get('tvg-id', x['tvg-id'])
-                            if override_channel.attrib.get('serviceRef', None) and self.config.sref_override:
-                                x['serviceRef'] = override_channel.attrib.get('serviceRef', x['serviceRef'])
-                                x['serviceRefOverride'] = True
-                            # streamUrl no longer output to xml file but we still check and process it
-                            x['stream-url'] = override_channel.attrib.get('streamUrl', x['stream-url'])
-                            clear_stream_url = override_channel.attrib.get('clearStreamUrl') == 'true'
-                            if clear_stream_url:
-                                x['stream-url'] = ''
-                            break
-            self._update_status('custom overrides applied...')
-            print(Status.message)
 
     def _get_mapping_file(self):
         mapping_file = None
@@ -695,6 +709,54 @@ class Provider:
     def _update_status(self, message):
         Status.message = '{}: {}'.format(self.config.name, message)
 
+    def _process_provider_update(self):
+        """Download provider update file from url"""
+        downloaded = False
+        updated = False
+
+        path = tempfile.gettempdir()
+        filename = os.path.join(path, 'provider-{}-update.txt'.format(self.config.name))
+        self._update_status('----Downloading providers update file----')
+        print('\n{}'.format(Status.message))
+        print('provider update url = ', self.config.provider_update_url)
+        try:
+            context = ssl._create_unverified_context()
+            urllib.urlretrieve(self.config.provider_update_url, filename, context=context)
+            downloaded = True
+        except Exception:
+            pass  # fallback to no ssl context
+
+        if not downloaded:
+            try:
+                urllib.urlretrieve(self.config.provider_update_url, filename)
+            except Exception, e:
+                print('[e2m3u2b] process_provider_update error. Type:', type(e))
+                print('[e2m3u2b] process_provider_update error: ', e)
+
+        if os.path.isfile(filename):
+            try:
+                with open(filename, 'r') as f:
+                    line = f.readline().strip()
+                if line:
+                    provider_tmp = {
+                        'name': line.split(',')[0],
+                        'm3u': line.split(',')[1],
+                        'epg': line.split(',')[2],
+                    }
+                    # check we have name and m3u values
+                    if provider_tmp.get('name') and provider_tmp.get('m3u'):
+                        self.config.name = provider_tmp['name']
+                        self.config.m3u_url = provider_tmp['m3u']
+                        self.config.epg_url = provider_tmp.get('epg', self.config.epg_url)
+                        self.config.last_provider_update = int(time.time())
+                        updated = True
+            except IndexError, e:
+                print('[e2m3u2b] _process_provider_update error unable to read providers update file')
+
+            if not DEBUG:
+                os.remove(filename)
+        return updated
+
     def process_provider(self):
         Status.is_running = True
 
@@ -733,7 +795,6 @@ class Provider:
         # Download m3u
         self.download_m3u()
 
-
         if self._has_m3u_file():
             # parse m3u file
             self.parse_m3u()
@@ -754,6 +815,11 @@ class Provider:
             print(Status.message)
 
         Status.is_running = False
+
+    def provider_update(self):
+        if self.config.provider_update_url and self.config.username and self.config.password:
+            return self._process_provider_update()
+        return False
 
     def extract_user_details_from_url(self):
         """Extract username & password from m3u_url """
@@ -780,7 +846,6 @@ class Provider:
         except Exception, e:
             self._update_status('Unable to download m3u file from url')
             print(Status.message)
-            # raise
             filename = None
         self._m3u_file = filename
 
@@ -798,9 +863,14 @@ class Provider:
         print('\n{}'.format(Status.message))
         try:
             if not os.path.getsize(self._m3u_file):
-                raise Exception("M3U file is empty. Check username & password")
+                msg = 'M3U file is empty. Check username & password'
+                print(msg)
+                if DEBUG:
+                    raise Exception(msg)
         except Exception, e:
-            raise
+            print(e)
+            if DEBUG:
+                raise
 
         service_dict = {}
 
@@ -814,7 +884,10 @@ class Provider:
                                     'serviceRef': '', 'serviceRefOverride': False
                                     }
                     if line.find('tvg-') == -1:
-                        raise Exception("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
+                        msg = "No extended playlist info found. Check m3u url should be 'type=m3u_plus'"
+                        print(msg)
+                        if DEBUG:
+                            raise Exception(msg)
                     channel = line.split('"')
                     # strip unwanted info at start of line
                     pos = channel[0].find(' ')
@@ -835,7 +908,10 @@ class Provider:
                 elif 'http:' in line or 'https:' in line or 'rtmp:' in line:
                     if 'tvg-id' not in service_dict:
                         # if this is true the playlist had a http line but not EXTINF
-                        raise Exception("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
+                        msg = "No extended playlist info found. Check m3u url should be 'type=m3u_plus'"
+                        print(msg)
+                        if DEBUG:
+                            raise Exception(msg)
                     service_dict['stream-url'] = line.strip()
                     self._set_streamtypes_vodcats(service_dict)
 
@@ -957,8 +1033,10 @@ class Provider:
         try:
             urllib.urlretrieve(self.config.bouquet_url, filename)
         except Exception, e:
-            print('Unable to download providers panel bouquet file')
-            raise
+            msg = 'Unable to download providers panel bouquet file'
+            print(msg)
+            if DEBUG:
+                raise msg
         self._panel_bouquet_file = filename
         self._parse_panel_bouquet()
 
@@ -988,13 +1066,19 @@ class Provider:
         self._xmltv_sources_list = {}
         mapping_file = self._get_mapping_file()
         if mapping_file:
-            tree = ET.ElementTree(file=mapping_file)
-            for group in tree.findall('.//xmltvextrasources/group'):
-                group_name = group.attrib.get('id')
-                urllist = []
-                for url in group:
-                    urllist.append(url.text)
-                self._xmltv_sources_list[group_name] = urllist
+            try:
+                tree = ET.ElementTree(file=mapping_file)
+                for group in tree.findall('.//xmltvextrasources/group'):
+                    group_name = group.attrib.get('id')
+                    urllist = []
+                    for url in group:
+                        urllist.append(url.text)
+                    self._xmltv_sources_list[group_name] = urllist
+            except Exception, e:
+                msg = 'Corrupt override.xml file'
+                print(msg)
+                if DEBUG:
+                    raise msg
 
     def save_map_xml(self):
         """Create mapping file"""
@@ -1301,58 +1385,7 @@ class Provider:
             for group in self._xmltv_sources_list:
                 self._create_epgimport_source(self._xmltv_sources_list[group], group)
 
-    def provider_update(self):
-        if self.config.provider_update_url and self.config.username and self.config.password:
-            return self._process_provider_update()
-        return False
 
-    def _process_provider_update(self):
-        """Download provider update file from url"""
-        downloaded = False
-        updated = False
-
-        path = tempfile.gettempdir()
-        filename = os.path.join(path, 'provider-{}-update.txt'.format(self.config.name))
-        self._update_status('----Downloading providers update file----')
-        print('\n{}'.format(Status.message))
-        print('provider update url = ', self.config.provider_update_url)
-        try:
-            context = ssl._create_unverified_context()
-            urllib.urlretrieve(self.config.provider_update_url, filename, context=context)
-            downloaded = True
-        except Exception:
-            pass  # fallback to no ssl context
-
-        if not downloaded:
-            try:
-                urllib.urlretrieve(self.config.provider_update_url, filename)
-            except Exception, e:
-                print('[e2m3u2b] process_provider_update error. Type:', type(e))
-                print('[e2m3u2b] process_provider_update error: ', e)
-
-        if os.path.isfile(filename):
-            try:
-                with open(filename, 'r') as f:
-                    line = f.readline().strip()
-                if line:
-                    provider_tmp = {
-                        'name': line.split(',')[0],
-                        'm3u': line.split(',')[1],
-                        'epg': line.split(',')[2],
-                    }
-                    # check we have name and m3u values
-                    if provider_tmp.get('name') and provider_tmp.get('m3u'):
-                        self.config.name = provider_tmp['name']
-                        self.config.m3u_url = provider_tmp['m3u']
-                        self.config.epg_url = provider_tmp.get('epg', self.config.epg_url)
-                        self.config.last_provider_update = int(time.time())
-                        updated = True
-            except IndexError, e:
-                print('[e2m3u2b] _process_provider_update error unable to read providers update file')
-
-            if not DEBUG:
-                os.remove(filename)
-        return updated
 
 
 class Config:
@@ -1416,55 +1449,61 @@ class Config:
         """ Read Config from file """
         self.providers = OrderedDict()
 
-        tree = ET.ElementTree(file=configfile)
-        for node in tree.findall('.//supplier'):
-            provider = ProviderConfig()
+        try:
+            tree = ET.ElementTree(file=configfile)
+            for node in tree.findall('.//supplier'):
+                provider = ProviderConfig()
 
-            if node is not None:
-                for child in node:
-                    if child.tag == 'name':
-                        provider.name = '' if child.text is None else child.text.strip()
-                    if child.tag == 'enabled':
-                        provider.enabled = True if child.text == '1' else False
-                    if child.tag == 'settingslevel':
-                        provider.settings_level = '' if child.text is None else child.text.strip()
-                    if child.tag == 'm3uurl':
-                        provider.m3u_url = '' if child.text is None else child.text.strip()
-                    if child.tag == 'epgurl':
-                        provider.epg_url = '' if child.text is None else child.text.strip()
-                    if child.tag == 'username':
-                        provider.username = '' if child.text is None else child.text.strip()
-                    if child.tag == 'password':
-                        provider.password = '' if child.text is None else child.text.strip()
-                    if child.tag == 'providerupdate':
-                        provider.provider_update_url = '' if child.text is None else child.text.strip()
-                    if child.tag == 'iptvtypes':
-                        provider.iptv_types = True if child.text == '1' else False
-                    if child.tag == 'streamtypetv':
-                        provider.streamtype_tv = '' if child.text is None else child.text.strip()
-                    if child.tag == 'streamtypevod':
-                        provider.streamtype_vod = '' if child.text is None else child.text.strip()
-                    if child.tag == 'multivod':
-                        provider.multi_vod = True if child.text == '1' else False
-                    if child.tag == 'allbouquet':
-                        provider.all_bouquet = True if child.text == '1' else False
-                    if child.tag == 'picons':
-                        provider.picons = True if child.text == '1' else False
-                    if child.tag == 'iconpath':
-                        provider.icon_path = '' if child.text is None else child.text.strip()
-                    if child.tag == 'xcludesref':
-                        provider.sref_override = True if child.text == '0' else False
-                    if child.tag == 'bouqueturl':
-                        provider.bouquet_url = '' if child.text is None else child.text.strip()
-                    if child.tag == 'bouquetdownload':
-                        provider.bouquet_download = True if child.text == '1' else False
-                    if child.tag == 'bouquettop':
-                        provider.bouquet_top = True if child.text == '1' else False
-                    if child.tag == 'lastproviderupdate':
-                        provider.last_provider_update = 0 if child.text is None else child.text.strip()
+                if node is not None:
+                    for child in node:
+                        if child.tag == 'name':
+                            provider.name = '' if child.text is None else child.text.strip()
+                        if child.tag == 'enabled':
+                            provider.enabled = True if child.text == '1' else False
+                        if child.tag == 'settingslevel':
+                            provider.settings_level = '' if child.text is None else child.text.strip()
+                        if child.tag == 'm3uurl':
+                            provider.m3u_url = '' if child.text is None else child.text.strip()
+                        if child.tag == 'epgurl':
+                            provider.epg_url = '' if child.text is None else child.text.strip()
+                        if child.tag == 'username':
+                            provider.username = '' if child.text is None else child.text.strip()
+                        if child.tag == 'password':
+                            provider.password = '' if child.text is None else child.text.strip()
+                        if child.tag == 'providerupdate':
+                            provider.provider_update_url = '' if child.text is None else child.text.strip()
+                        if child.tag == 'iptvtypes':
+                            provider.iptv_types = True if child.text == '1' else False
+                        if child.tag == 'streamtypetv':
+                            provider.streamtype_tv = '' if child.text is None else child.text.strip()
+                        if child.tag == 'streamtypevod':
+                            provider.streamtype_vod = '' if child.text is None else child.text.strip()
+                        if child.tag == 'multivod':
+                            provider.multi_vod = True if child.text == '1' else False
+                        if child.tag == 'allbouquet':
+                            provider.all_bouquet = True if child.text == '1' else False
+                        if child.tag == 'picons':
+                            provider.picons = True if child.text == '1' else False
+                        if child.tag == 'iconpath':
+                            provider.icon_path = '' if child.text is None else child.text.strip()
+                        if child.tag == 'xcludesref':
+                            provider.sref_override = True if child.text == '0' else False
+                        if child.tag == 'bouqueturl':
+                            provider.bouquet_url = '' if child.text is None else child.text.strip()
+                        if child.tag == 'bouquetdownload':
+                            provider.bouquet_download = True if child.text == '1' else False
+                        if child.tag == 'bouquettop':
+                            provider.bouquet_top = True if child.text == '1' else False
+                        if child.tag == 'lastproviderupdate':
+                            provider.last_provider_update = 0 if child.text is None else child.text.strip()
 
-            if provider.name:
-                self.providers[provider.name] = provider
+                if provider.name:
+                    self.providers[provider.name] = provider
+        except Exception, e:
+            msg = 'Corrupt config.xml file'
+            print(msg)
+            if DEBUG:
+                raise Exception(msg)
 
     def write_config(self):
         """Write providers to config file
@@ -1631,7 +1670,7 @@ USAGE
         return 0
 
     except Exception, e:
-        if DEBUG or TESTRUN:
+        if DEBUG:
             raise e
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
