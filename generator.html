@@ -42,12 +42,12 @@
 
     <p>This page <strong>does not</strong> send or store any of your details it runs entirley within your browser.</p>
 
-    <p>To use enter your providers hostname and port without the starting <em>http://</em> e.g. www.suls.co.uk:8080 then your username and password.</p>
+    <p>To use enter your providers hostname and port e.g. http://www.suls.co.uk:8080 then your username and password.</p>
 
     <p>Once you press <strong>Generate</strong> the one line install command will be shown. Connect to your box (i.e. using PuTTY) and then paste in the command.</p>
 
     <label for="host">Host</label>
-    <input id="host" placeholder=" e.g. www.suls.co.uk:80">
+    <input id="host" placeholder=" e.g. http://www.suls.co.uk:8080">
     <label for="username">Username</label>
     <input id="username" placeholder="username">
     <label for="password">Password</label>
@@ -82,7 +82,7 @@
             }
         }
 
-        var installcmd = "wget -O /tmp/config.xml \"https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/generator_config.xml\" && sed -i 's/hhhhh/myhost'/g /tmp/config.xml && sed -i 's/uuuuu/myusername'/g /tmp/config.xml && sed -i 's/ppppp/mypassword'/g /tmp/config.xml && opkg install --force-reinstall \"https://github.com/su1s/e2m3u2bouquet/releases/download/v0.8.1/enigma2-plugin-extensions-e2m3u2bouquet_0.8.1_all.ipk\" && reboot";
+        var installcmd = "wget -O /tmp/config.xml \"https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/generator_config.xml\" && sed -i 's#hhhhh#myhost#g' /tmp/config.xml && sed -i 's/uuuuu/myusername/g' /tmp/config.xml && sed -i 's/ppppp/mypassword/g' /tmp/config.xml && opkg install --force-reinstall \"https://github.com/su1s/e2m3u2bouquet/releases/download/v0.8.1/enigma2-plugin-extensions-e2m3u2bouquet_0.8.1_all.ipk\" && reboot";
         var button = document.getElementById('generate');
         button.addEventListener('click', onClick);
     </script> 
