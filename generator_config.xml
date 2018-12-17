@@ -11,8 +11,8 @@
         <name>IPTV</name><!-- Supplier Name -->
         <enabled>1</enabled><!-- Enable or disable the supplier (0 or 1) -->
         <settingslevel>simple</settingslevel>
-        <m3uurl><![CDATA[http://hhhhh/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts]]></m3uurl><!-- Extended M3U url --> 
-        <epgurl><![CDATA[http://hhhhh/xmltv.php?username=USERNAME&password=PASSWORD]]></epgurl><!-- XMLTV EPG url -->
+        <m3uurl><![CDATA[hhhhh/get.php?username=USERNAME&password=PASSWORD&type=m3u_plus&output=ts]]></m3uurl><!-- Extended M3U url --> 
+        <epgurl><![CDATA[hhhhh/xmltv.php?username=USERNAME&password=PASSWORD]]></epgurl><!-- XMLTV EPG url -->
         <username><![CDATA[uuuuu]]></username><!-- (Optional) will replace USERNAME placeholder in urls -->
         <password><![CDATA[ppppp]]></password><!-- (Optional) will replace PASSWORD placeholder in urls -->
         <providerupdate><![CDATA[]]></providerupdate><!-- (Optional) Provider update url -->
