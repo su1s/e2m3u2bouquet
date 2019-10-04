@@ -38,9 +38,9 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.8.2'
+__version__ = '0.8.3'
 __date__ = '2017-06-04'
-__updated__ = '2018-12-26'
+__updated__ = '2019-10-04'
 
 DEBUG = 0
 TESTRUN = 0
@@ -267,7 +267,7 @@ class ProviderConfig:
 class Provider:
     def __init__(self, config):
         self._panel_bouquet_file = ''
-        self._panel_bouquet = None
+        self._panel_bouquet = {}
         self._m3u_file = None
         self._category_order = []
         self._category_options = {}
@@ -372,7 +372,6 @@ class Provider:
     def _parse_panel_bouquet(self):
         """Check providers bouquet for custom service references
         """
-        self._panel_bouquet = {}
 
         if os.path.isfile(self._panel_bouquet_file):
             with open(self._panel_bouquet_file, "r") as f:
@@ -402,7 +401,7 @@ class Provider:
         # check for vod streams ending .*.m3u8 e.g. 2345.mp4.m3u8
         is_m3u8_vod = re.search('\.[^/]+\.m3u8$', parsed_stream_url.path)
 
-        if (parsed_stream_url.path.endswith('.ts') or parsed_stream_url.path.endswith('.m3u8')) \
+        if (parsed_stream_url.path.endswith('ts') or parsed_stream_url.path.endswith('.m3u8')) \
                 or not ext \
                 and not is_m3u8_vod \
                 and not service_dict['group-title'].startswith('VOD'):
@@ -411,6 +410,7 @@ class Provider:
                 # Set custom TV stream type if supplied - this overrides all_iptv_stream_types
                 service_dict['stream-type'] = str(self.config.streamtype_tv)
         else:
+            service_dict['category_type'] = 'vod'
             service_dict['group-title'] = u"VOD - {}".format(service_dict['group-title'])
             service_dict['stream-type'] = '4097' if not self.config.streamtype_vod else str(self.config.streamtype_vod)
 
@@ -581,9 +581,8 @@ class Provider:
         """Add service to bouquet file
         """
         if not channel['stream-name'].startswith('placeholder_'):
-            f.write("#SERVICE {}:{}:{}\n"
-                    .format(channel['serviceRef'], urllib.quote(channel['stream-url']),
-                            get_service_title(channel).encode("utf-8")))
+            f.write("#SERVICE {}:{}:\n"
+                    .format(channel['serviceRef'], urllib.quote(channel['stream-url'])))
             f.write("#DESCRIPTION {}\n".format(get_service_title(channel).encode("utf-8")))
         else:
             f.write('{}\n'.format(PLACEHOLDER_SERVICE))
@@ -706,6 +705,17 @@ class Provider:
     def _has_m3u_file(self):
         return self._m3u_file is not None
 
+    def _extract_user_details_from_url(self):
+        """Extract username & password from m3u_url """
+        if self.config.m3u_url:
+            parsed = urlparse.urlparse(self.config.m3u_url)
+            username_param = urlparse.parse_qs(parsed.query).get('username')
+            if username_param:
+                self.config.username = username_param[0]
+            password_param = urlparse.parse_qs(parsed.query).get('password')
+            if password_param:
+                self.config.password = password_param[0]
+
     def _update_status(self, message):
         Status.message = '{}: {}'.format(self.config.name, message)
 
@@ -771,8 +781,7 @@ class Provider:
 
         # If no username or password supplied extract them from m3u_url
         if (self.config.username is None) or (self.config.password is None):
-            # username, password = e2m3u_setup.extract_user_details_from_url(provider)
-            self.extract_user_details_from_url()
+            self._extract_user_details_from_url()
 
         # Replace USERNAME & PASSWORD placeholders in urls
         self.config.m3u_url = self.config.m3u_url.replace('USERNAME', urllib.quote_plus(self.config.username)).replace('PASSWORD', urllib.quote_plus(self.config.password))
@@ -798,6 +807,10 @@ class Provider:
         if self._has_m3u_file():
             # parse m3u file
             self.parse_m3u()
+
+        if self._dictchannels:
+            self.parse_data()
+
             self.parse_map_xmltvsources_xml()
             # save xml mapping - should be after m3u parsing
             self.save_map_xml()
@@ -821,17 +834,6 @@ class Provider:
             return self._process_provider_update()
         return False
 
-    def extract_user_details_from_url(self):
-        """Extract username & password from m3u_url """
-        if self.config.m3u_url:
-            parsed = urlparse.urlparse(self.config.m3u_url)
-            username_param = urlparse.parse_qs(parsed.query).get('username')
-            if username_param:
-                self.config.username = username_param[0]
-            password_param = urlparse.parse_qs(parsed.query).get('password')
-            if password_param:
-                self.config.password = password_param[0]
-
     def download_m3u(self):
         """Download m3u file from url"""
         path = tempfile.gettempdir()
@@ -852,10 +854,10 @@ class Provider:
     def parse_m3u(self):
         """core parsing routine"""
         # Extract and generate the following items from the m3u
-        # group-title
-        # tvg-name
         # tvg-id
+        # tvg-name
         # tvg-logo
+        # group-title
         # stream-name
         # stream-url
 
@@ -873,21 +875,28 @@ class Provider:
                 raise
 
         service_dict = {}
+        valid_services_found = False
+        service_valid = False
 
         with open(self._m3u_file, "r") as f:
             for line in f:
-                if 'EXTM3U' in line:  # First line we are not interested
+                if 'EXTM3U' in line or (line.startswith('#') and not line.startswith('#EXTINF')):  # First line or comments we are not interested
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
+                    service_valid = False
                     service_dict = {'tvg-id': '', 'tvg-name': '', 'tvg-logo': '', 'group-title': '', 'stream-name': '',
+                                    'category_type': 'live', 'has_archive': False,
                                     'stream-url': '', 'enabled': True, 'nameOverride': '', 'categoryOverride': '',
                                     'serviceRef': '', 'serviceRefOverride': False
                                     }
                     if line.find('tvg-') == -1:
-                        msg = "No extended playlist info found. Check m3u url should be 'type=m3u_plus'"
-                        print(msg)
                         if DEBUG:
-                            raise Exception(msg)
+                            msg = "No extended playlist info found for this service'"
+                            print(msg)
+                        continue
+                    elif not valid_services_found:
+                        valid_services_found = True
+
                     channel = line.split('"')
                     # strip unwanted info at start of line
                     pos = channel[0].find(' ')
@@ -898,20 +907,15 @@ class Provider:
                         service_dict[channel[i].lower().strip(' =')] = channel[i + 1].decode('utf-8')
 
                     # Get the stream name from end of line (after comma)
-                    stream_name_pos = line.rfind(',')
+                    stream_name_pos = line.rfind('",')
                     if stream_name_pos != -1:
-                        service_dict['stream-name'] = line[stream_name_pos + 1:].strip().decode('utf-8')
+                        service_dict['stream-name'] = line[stream_name_pos + 2:].strip().decode('utf-8')
 
                     # Set default name for any blank groups
                     if service_dict['group-title'] == '':
                         service_dict['group-title'] = u'None'
-                elif 'http:' in line or 'https:' in line or 'rtmp:' in line:
-                    if 'tvg-id' not in service_dict:
-                        # if this is true the playlist had a http line but not EXTINF
-                        msg = "No extended playlist info found. Check m3u url should be 'type=m3u_plus'"
-                        print(msg)
-                        if DEBUG:
-                            raise Exception(msg)
+                    service_valid = True
+                elif ('http:' in line or 'https:' in line or 'rtmp:' in line or 'rtsp:' in line) and service_valid is True:
                     service_dict['stream-url'] = line.strip()
                     self._set_streamtypes_vodcats(service_dict)
 
@@ -920,6 +924,18 @@ class Provider:
                     else:
                         self._dictchannels[service_dict['group-title']].append(service_dict)
 
+            if not valid_services_found:
+                msg = "No extended playlist info found. Check m3u url should be 'type=m3u_plus'"
+                print(msg)
+                if DEBUG:
+                    raise Exception(msg)
+
+        if not DEBUG:
+            # remove m3u file
+            if os.path.isfile(self._m3u_file):
+                os.remove(self._m3u_file)
+
+    def parse_data(self):
         # sort categories by custom order (if exists)
         sorted_categories = self._parse_map_bouquet_xml()
         self._category_order = self._dictchannels.keys()
@@ -931,8 +947,6 @@ class Provider:
         self._parse_map_channels_xml()
 
         # Add Service references
-        # VOD won't have epg so use same service id for all VOD
-        vod_service_id = 65535
         serviceid_start = 34000
         category_offset = 150
         catstartnum = serviceid_start
@@ -940,54 +954,48 @@ class Provider:
         for cat in self._category_order:
             num = catstartnum
             if cat in self._dictchannels:
-                if not cat.startswith("VOD"):
-                    if cat in self._category_options:
-                        # check if we have cat idStart from override file
-                        if self._category_options[cat]["idStart"] > 0:
-                            num = self._category_options[cat]["idStart"]
-                        else:
-                            self._category_options[cat]["idStart"] = num
+                if cat in self._category_options:
+                    # check if we have cat idStart from override file
+                    if self._category_options[cat]["idStart"] > 0:
+                        num = self._category_options[cat]["idStart"]
                     else:
-                        self._category_options[cat] = {"idStart": num}
-
-                    for x in self._dictchannels[cat]:
-                        cat_id = self._get_category_id(cat)
-                        service_ref = "{:x}:{}:{}:0".format(num, cat_id[:4], cat_id[4:])
-                        if not x['stream-name'].startswith('placeholder_'):
-                            if self._panel_bouquet and not x.get('serviceRefOverride'):
-                                # check if we have the panels custom service ref
-                                pos = x['stream-url'].rfind('/')
-                                if pos != -1 and (pos + 1 != len(x['stream-url'])):
-                                    m3u_stream_file = x['stream-url'][pos + 1:]
-                                    if m3u_stream_file in self._panel_bouquet:
-                                        # have a match use the panels custom service ref
-                                        x['serviceRef'] = "{}:{}".format(x['stream-type'], self._panel_bouquet[m3u_stream_file])
-                                        continue
-                            if not x.get('serviceRefOverride'):
-                                # if service ref is not overridden in xml update
-                                x['serviceRef'] = "{}:0:1:{}:0:0:0".format(x['stream-type'], service_ref)
-                            num += 1
-                        else:
-                            x['serviceRef'] = PLACEHOLDER_SERVICE
+                        self._category_options[cat]["idStart"] = num
                 else:
-                    for x in self._dictchannels[cat]:
-                        x['serviceRef'] = "{}:0:1:{:x}:0:0:0:0:0:0".format(x['stream-type'], vod_service_id)
+                    self._category_options[cat] = {"idStart": num}
+
+                for x in self._dictchannels[cat]:
+                    cat_id = self._get_category_id(cat)
+                    service_ref = "{:x}:{}:{}:0".format(num, cat_id[:4], cat_id[4:])
+                    if not x['stream-name'].startswith('placeholder_'):
+                        if self._panel_bouquet and not x.get('serviceRefOverride'):
+                            # check if we have the panels custom service ref
+                            pos = x['stream-url'].rfind('/')
+                            if pos != -1 and (pos + 1 != len(x['stream-url'])):
+                                m3u_stream_file = x['stream-url'][pos + 1:]
+                                if m3u_stream_file in self._panel_bouquet:
+                                    # have a match use the panels custom service ref
+                                    x['serviceRef'] = "{}:{}".format(x['stream-type'],
+                                                                     self._panel_bouquet[m3u_stream_file])
+                                    continue
+                        if not x.get('serviceRefOverride'):
+                            # if service ref is not overridden in xml update
+                            x['serviceRef'] = "{}:0:1:{}:0:0:0".format(x['stream-type'], service_ref)
+                        num += 1
+                    else:
+                        x['serviceRef'] = PLACEHOLDER_SERVICE
             while catstartnum < num:
                 catstartnum += category_offset
 
         vod_index = None
         if "VOD" in self._category_order:
             # if we have the vod category placeholder from the override use it otherwise
-            # use the first found vod category position
+            # place at end
             vod_index = self._category_order.index("VOD")
         else:
-            for key in self._category_order:
-                if key.startswith("VOD"):
-                    vod_index = self._category_order.index(key)
-                    break
+            vod_index = len(self._category_order)
 
         if vod_index is not None:
-            # move all VOD categories to VOD placeholder position or group after first vod position
+            # move all VOD categories to VOD placeholder position or place at end
             vodcategories = list((cat for cat in self._category_order if cat.startswith('VOD -')))
             if len(vodcategories):
                 # remove the vod category(s) from current position
@@ -997,7 +1005,7 @@ class Provider:
                 try:
                     self._category_order.remove("VOD")
                 except ValueError:
-                    pass    # ignore exception
+                    pass  # ignore exception
 
         # Have a look at what we have
         if DEBUG and TESTRUN:
@@ -1010,16 +1018,12 @@ class Provider:
                             if type(value) is bool:
                                 linevals += str(value) + ":"
                             else:
-                                linevals += (value).encode("utf-8") + ":"
+                                linevals += value.encode("utf-8") + ":"
                         datafile.write("{}\n".format(linevals))
             datafile.close()
-        self._update_status('Completed parsing m3u data...')
-        print(Status.message)
 
-        if not DEBUG:
-            # remove m3u file
-            if os.path.isfile(self._m3u_file):
-                os.remove(self._m3u_file)
+        self._update_status('Completed parsing data...')
+        print(Status.message)
 
     def download_panel_bouquet(self):
         """Download panel bouquet file from url
@@ -1625,6 +1629,8 @@ USAGE
             print('**************************************\n')
             args_provider = Provider(args_config)
             args_provider.process_provider()
+            reload_bouquets()
+            display_end_msg()
         else:
             print('\n********************************')
             print('E2m3u2bouquet - Config based setup')
