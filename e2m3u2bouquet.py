@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 
 """
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
@@ -9,18 +9,18 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 @license:    GNU GENERAL PUBLIC LICENSE version 3
 @deffield    updated: Updated
 """
+
+from __future__ import print_function
 import time
 import sys
 import os
 import errno
 import re
-import unicodedata
 import datetime
 import urllib
 import urlparse
 import imghdr
 import tempfile
-import glob
 import ssl
 import hashlib
 import socket
@@ -30,17 +30,17 @@ try:
     import xml.etree.cElementTree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
+from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 try:
     from enigma import eDVBDB
 except ImportError:
     eDVBDB = None
-from argparse import ArgumentParser
-from argparse import RawDescriptionHelpFormatter
+from argparse import ArgumentParser,  RawDescriptionHelpFormatter
 
 __all__ = []
-__version__ = '0.8.3'
+__version__ = '0.8.4'
 __date__ = '2017-06-04'
-__updated__ = '2019-10-04'
+__updated__ = '2019-10-13'
 
 DEBUG = 0
 TESTRUN = 0
@@ -157,38 +157,10 @@ def reload_bouquets():
             os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=2 > /dev/null 2>&1 &")
             print("bouquets reloaded...")
 
-
-def xml_safe_comment(string):
-    """Can't have -- in xml comments"""
-    return string.replace('--', '- - ')
-
-
-def xml_escape(string):
-    return string.replace("&", "&amp;") \
-        .replace("\"", "&quot;") \
-        .replace("'", "&apos;") \
-        .replace("<", "&lt;") \
-        .replace(">", "&gt;")
-
-
-def xml_unescape(string):
-    return string.replace('&quot;', '"') \
-        .replace() \
-        .replace("&apos;", "'") \
-        .replace("&lt;", "<") \
-        .replace("&gt;", ">") \
-        .replace("&amp;", "&")
-
-
-def get_safe_filename(filename):
-    """Convert filename to safe filename
-    """
-    name = filename.replace(" ", "_").replace("/", "_")
-    if type(name) is unicode:
-        name = name.encode('utf-8')
-    name = unicodedata.normalize('NFKD', unicode(name, 'utf_8')).encode('ASCII', 'ignore')
-    name = re.sub('[^a-z0-9-_]', '', name.lower())
-    return name
+def get_safe_filename(filename):                                                                                                                            
+    """Normalizes filename string                                                                                                                           
+    """                                                                                                                                                     
+    return re.sub('[-\s]+', '-', filename.decode('utf-8').translate({ord(c): None for c in '%~}{]["^$#@*,-!?&`|><+='})).strip().lower() 
 
 def get_parser_args(program_license, program_version_message):
     parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
@@ -205,7 +177,7 @@ def get_parser_args(program_license, program_version_message):
     providergroup.add_argument('-u', '--username', dest='username', action='store',
                                help='Your IPTV username (required)')
     providergroup.add_argument('-p', '--password', dest='password', action='store',
-                               help='Your IPTV password (required)')
+                                help='Your IPTV password (required)')
     # Options
     parser.add_argument('-i', '--iptvtypes', dest='iptvtypes', action='store_true',
                         help='Treat all stream references as IPTV stream type. (required for some enigma boxes)')
@@ -279,11 +251,11 @@ class Provider:
         if logo_url:
             if not logo_url.startswith('http'):
                 logo_url = 'http://{}'.format(logo_url)
-            piconname = self._get_picon_name(title)
-            picon_file_path = os.path.join(self.config.icon_path, piconname)
-            existingpicon = filter(os.path.isfile, glob.glob(picon_file_path + '*'))
 
-            if not existingpicon:
+            # Get the full picon file name with path
+            picon_file = os.path.join(self.config.icon_path, self._get_picon_name(title))
+
+            if not os.path.isfile(picon_file):
                 if DEBUG:
                     print("Picon file doesn't exist downloading")
                     print('PiconURL: {}'.format(logo_url))
@@ -298,52 +270,52 @@ class Provider:
                     info = response.info()
                     response.close()
                     if info.maintype == 'image':
-                        urllib.urlretrieve(logo_url, picon_file_path)
+                        urllib.urlretrieve(logo_url, picon_file)
                     else:
                         if DEBUG:
                             print('Download Picon - not an image, skipping')
-                        self._picon_create_empty(picon_file_path)
+                        self._picon_create_empty(picon_file)
                         return
                 except Exception, e:
                     if DEBUG:
                         print('Download picon urlopen error', e)
-                    self._picon_create_empty(picon_file_path)
+                    self._picon_create_empty(picon_file)
                     return
-                self._picon_post_processing(picon_file_path)
+                self._picon_post_processing(picon_file)
 
-    def _picon_create_empty(self, picon_file_path):
+    def _picon_create_empty(self, picon_file):
         """
         create an empty picon so that we don't retry this picon
         """
-        open(picon_file_path + '.None', 'a').close()
+        open(picon_file + '.None', 'a').close()
 
-    def _picon_post_processing(self, picon_file_path):
+    def _picon_post_processing(self, picon_file):
         """Check type of image received and convert to png
         if necessary
         """
         ext = ""
         # get image type
         try:
-            ext = imghdr.what(picon_file_path)
+            ext = imghdr.what(picon_file)
         except Exception, e:
             if DEBUG:
-                print('Picon post processing - not an image or no file', e, picon_file_path)
-            self._picon_create_empty(picon_file_path)
+                print('Picon post processing - not an image or no file', e, picon_file)
+            self._picon_create_empty(picon_file)
             return
         # if image but not png convert to png
         if (ext is not None) and (ext is not 'png'):
             if DEBUG:
                 print('Converting Picon to png')
             try:
-                Image.open(picon_file_path).save("{}.{}".format(picon_file_path, 'png'))
+                Image.open(picon_file).save("{}.{}".format(picon_file, 'png'))
             except Exception, e:
                 if DEBUG:
                     print('Picon post processing - unable to convert image', e)
-                self._picon_create_empty(picon_file_path)
+                self._picon_create_empty(picon_file)
                 return
             try:
                 # remove non png file
-                os.remove(picon_file_path)
+                os.remove(picon_file)
             except Exception, e:
                 if DEBUG:
                     print('Picon post processing - unable to remove non png file', e)
@@ -351,23 +323,15 @@ class Provider:
         else:
             # rename to correct extension
             try:
-                os.rename(picon_file_path, "{}.{}".format(picon_file_path, ext))
+                os.rename(picon_file_path, "{}.{}".format(picon_file, ext))
             except Exception, e:
                 if DEBUG:
                     print('Picon post processing - unable to rename file ', e)
 
-    def _get_picon_name(self, service_name):
-        """Convert the service name to a Picon Service Name
-        """
-        name = service_name
-        if type(name) is unicode:
-            name = name.encode('utf-8')
-        name = unicodedata.normalize('NFKD', unicode(name, 'utf_8')).encode('ASCII', 'ignore')
-        name = re.sub('[\W]', '', name.replace('&', 'and')
-                      .replace('+', 'plus')
-                      .replace('*', 'star')
-                      .lower())
-        return name
+    def _get_picon_name(self, service_name):                                                                                                                
+        """Convert the service name to a Picon Service Name                                                                                                 
+        """                                                                                                                                                 
+        return service_name.decode('utf-8').translate({ord(c): None for c in '%~}{]["^$#@*,-!?&`|><+='}).lower()
 
     def _parse_panel_bouquet(self):
         """Check providers bouquet for custom service references
@@ -549,6 +513,7 @@ class Provider:
                                 x['categoryOverride'] = override_channel.attrib.get('categoryOverride', '')
                                 # default to current values if attribute doesn't exist
                                 x['tvg-id'] = override_channel.attrib.get('tvg-id', x['tvg-id'])
+                                x['tvg-name'] = override_channel.attrib.get('tvg-name', x['tvg-name']) # Dorik
                                 if override_channel.attrib.get('serviceRef', None) and self.config.sref_override:
                                     x['serviceRef'] = override_channel.attrib.get('serviceRef', x['serviceRef'])
                                     x['serviceRefOverride'] = True
@@ -693,7 +658,7 @@ class Provider:
                     .format(2 * indent, channels_filename))
             f.write('{}<description>{}</description>\n'.format(3 * indent, xml_escape(source_name)))
             for source in sources:
-                f.write('{}<url><![CDATA[{}]]></url>\n'.format(3 * indent, source))
+                f.write('{}<url>{}</url>\n'.format(3 * indent, source))
             f.write('{}</source>\n'.format(2 * indent))
             f.write('{}</sourcecat>\n'.format(indent))
             f.write('</sources>\n')
@@ -884,37 +849,31 @@ class Provider:
                     continue
                 elif 'EXTINF:' in line:  # Info line - work out group and output the line
                     service_valid = False
-                    service_dict = {'tvg-id': '', 'tvg-name': '', 'tvg-logo': '', 'group-title': '', 'stream-name': '',
-                                    'category_type': 'live', 'has_archive': False,
-                                    'stream-url': '', 'enabled': True, 'nameOverride': '', 'categoryOverride': '',
-                                    'serviceRef': '', 'serviceRefOverride': False
-                                    }
-                    if line.find('tvg-') == -1:
-                        if DEBUG:
-                            msg = "No extended playlist info found for this service'"
-                            print(msg)
-                        continue
-                    elif not valid_services_found:
+                    service_dict = {}.fromkeys(['tvg-id', 'tvg-name', 'tvg-logo', 'group-title',
+                                                'stream-name', 'stream-url', 'nameOverride', 'categoryOverride', 'serviceRef',], '')
+                    service_dict.update({'category_type': 'live', 'has_archive': False, 'enabled': True, 'serviceRefOverride': False })
+
+                    # https://tools.ietf.org/html/draft-pantos-http-live-streaming-23#section-4.3.2.1
+                    # #EXTINF:<DURATION> [<KEY>="<VALUE>"]*,<TITLE> 
+
+                    try:
+                        keys, service_dict['stream-name'] = map(str.strip, line.split(':')[1].split(','))
+                    except:
+                        if DEBUG:                                                                                                                           
+                            msg = "No TITLE info found for this service - skpip"                                                                       
+                            print(msg)                                                                                                                      
+                        continue                         
+                    else:
                         valid_services_found = True
+  
+                    # Parse all available tags in EXTINF line
+                    service_dict.update({k:v[1:-1] for k,v in [x.split('=') for x in keys.split() if '=' in x]})
 
-                    channel = line.split('"')
-                    # strip unwanted info at start of line
-                    pos = channel[0].find(' ')
-                    channel[0] = channel[0][pos:]
-
-                    # loop through params and build dict
-                    for i in xrange(0, len(channel) - 2, 2):
-                        service_dict[channel[i].lower().strip(' =')] = channel[i + 1].decode('utf-8')
-
-                    # Get the stream name from end of line (after comma)
-                    stream_name_pos = line.rfind('",')
-                    if stream_name_pos != -1:
-                        service_dict['stream-name'] = line[stream_name_pos + 2:].strip().decode('utf-8')
-
-                    # Set default name for any blank groups
+                    # Set default name for any blank group-title tag
                     if service_dict['group-title'] == '':
                         service_dict['group-title'] = u'None'
                     service_valid = True
+
                 elif ('http:' in line or 'https:' in line or 'rtmp:' in line or 'rtsp:' in line) and service_valid is True:
                     service_dict['stream-url'] = line.strip()
                     self._set_streamtypes_vodcats(service_dict)
@@ -1098,6 +1057,7 @@ class Provider:
                 f.write('{} Disable bouquets or channels by setting enabled to "false"\r\n'.format(indent))
                 f.write('{} Map DVB EPG to IPTV by changing channel serviceRef attribute to match DVB service reference\r\n'.format(indent))
                 f.write('{} Map XML EPG to different feed by changing channel tvg-id attribute\r\n'.format(indent))
+                f.write('{} Map XML EPG to different feed by changing channel tvg-name attribute\r\n'.format(indent))
                 f.write('{} Rename this file as {}-sort-override.xml for changes to apply\r\n'.format(indent, get_safe_filename(self.config.name)))
                 f.write('-->\r\n')
 
@@ -1212,14 +1172,15 @@ class Provider:
                     if cat in self._dictchannels:
                         # Don't output any of the VOD channels
                         if not cat.startswith('VOD'):
-                            f.write('{}<!-- {} -->\r\n'.format(2 * indent, xml_safe_comment(xml_escape(cat.encode('utf-8')))))
+                            f.write('{}<!-- {} -->\r\n'.format(2 * indent, xml_escape(cat.encode('utf-8'))))
                             for x in self._dictchannels[cat]:
                                 if not x['stream-name'].startswith('placeholder_'):
-                                    f.write('{}<channel name="{}" nameOverride="{}" tvg-id="{}" enabled="{}" category="{}" categoryOverride="{}" serviceRef="{}" clearStreamUrl="{}" />\r\n'
+                                    f.write('{}<channel name="{}" nameOverride="{}" tvg-id="{}" tvg-name="{}" enabled="{}" category="{}" categoryOverride="{}" serviceRef="{}" clearStreamUrl="{}" />\r\n'
                                             .format(2 * indent,
                                                     xml_escape(x['stream-name'].encode('utf-8')),
                                                     xml_escape(x.get('nameOverride', '').encode('utf-8')),
                                                     xml_escape(x['tvg-id'].encode('utf-8')),
+                                                    xml_escape(x['tvg-name'].encode('utf-8')),
                                                     str(x['enabled']).lower(),
                                                     xml_escape(x['group-title'].encode('utf-8')),
                                                     xml_escape(x.get('categoryOverride', '').encode('utf-8')),
@@ -1367,10 +1328,12 @@ class Provider:
                         if not cat.startswith('VOD'):
                             cat_title = get_category_title(cat, self._category_options)
 
-                            f.write('{}<!-- {} -->\n'.format(indent, xml_safe_comment(xml_escape(cat_title.encode('utf-8')))))
+                            f.write('{}<!-- {} -->\n'.format(indent, xml_escape(cat_title.encode('utf-8'))))
                             for x in self._dictchannels[cat]:
                                 if not x['stream-name'].startswith('placeholder_'):
-                                    tvg_id = x['tvg-id'] if x['tvg-id'] else get_service_title(x)
+                                    tvg_id = x.get('tvg-id')
+                                    if not tvg_id:
+                                       tvg_id = x.get('tvg-name', get_service_title(x))
                                     if x['enabled']:
                                         # force the epg channels to stream type '1'
                                         epg_service_ref = x['serviceRef']
@@ -1379,7 +1342,7 @@ class Provider:
                                             epg_service_ref = '1{}'.format(epg_service_ref[pos:])
                                         f.write('{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
                                                 .format(indent, xml_escape(tvg_id.encode('utf-8')), epg_service_ref,
-                                                        xml_safe_comment(xml_escape(get_service_title(x).encode('utf-8')))))
+                                                          xml_escape(get_service_title(x).encode('utf-8'))))
                 f.write('</channels>\n')
 
             # create epg-importer sources file for providers feed
