@@ -656,7 +656,7 @@ class Provider:
                     .format(2 * indent, channels_filename))
             f.write('{}<description>{}</description>\n'.format(3 * indent, xml_escape(source_name)))
             for source in sources:
-                f.write('{}<url>{}</url>\n'.format(3 * indent, source))
+                f.write('{}<url><![CDATA[{}]]></url>\n'.format(3 * indent, source))
             f.write('{}</source>\n'.format(2 * indent))
             f.write('{}</sourcecat>\n'.format(indent))
             f.write('</sources>\n')
