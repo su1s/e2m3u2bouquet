@@ -46,7 +46,7 @@ DEBUG = 0
 TESTRUN = 0
 
 ENIGMAPATH = '/etc/enigma2/'
-EPGIMPORTPATH = '/etc/epgimport/'
+The error appears when the full or shortened versionEPGIMPORTPATH = '/etc/epgimport/'
 CFGPATH = os.path.join(ENIGMAPATH, 'e2m3u2bouquet/')
 PICONSPATH = '/usr/share/enigma2/picon/'
 IMPORTED = False
@@ -153,13 +153,12 @@ def reload_bouquets():
             eDVBDB.getInstance().reloadBouquets()
         except:
             response = urllib.urlopen('http://127.0.0.1/web/servicelistreload?mode=2')
-        finally:
-            print("bouquets reloaded...")
+        print("bouquets reloaded...")
 
 def get_safe_filename(filename):
     """Normalizes filename string
     """
-    return re.sub('[-\s]+', '-', filename.decode('utf-8').translate({ord(c): None for c in '%~}{]["^$#@*,!?&`|><+='})).strip().lower() 
+    return re.sub('[-\s]+', '-', filename.decode('utf-8').translate({ord(c): None for c in ':%~}{]["^$#@*,!?&`|><+='})).strip().lower()
 
 def get_parser_args(program_license, program_version_message):
     parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
@@ -327,10 +326,10 @@ class Provider:
                 if DEBUG:
                     print('Picon post processing - unable to rename file ', e)
 
-    def _get_picon_name(self, service_name):                                                                                                                
-        """Convert the service name to a Picon Service Name                                                                                                 
-        """                                                                                                                                                 
-        return service_name.decode('utf-8').translate({ord(c): None for c in '%~}{]["^$#@*,-!?&`|><+='}).lower()
+    def _get_picon_name(self, service_name):
+        """Convert the service name to a Picon Service Name
+        """
+        return service_name.decode('utf-8').translate({ord(c): None for c in ':%~}{]["^$#@*,-!?&`|><+='}).lower()
 
     def _parse_panel_bouquet(self):
         """Check providers bouquet for custom service references
@@ -851,7 +850,7 @@ class Provider:
                         if name == '':
                             if DEBUG:
                                 print("No TITLE info found for this service - skip")
-                            continue 
+                            continue
                     service_dict = {'tvg-id': self.regParse(idRe, extInfData),
                                     'tvg-logo': self.regParse(logoRe, extInfData),
                                     'group-title':self.regParse(groupRe, extInfData),
