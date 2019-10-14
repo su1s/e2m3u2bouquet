@@ -46,7 +46,7 @@ DEBUG = 0
 TESTRUN = 0
 
 ENIGMAPATH = '/etc/enigma2/'
-The error appears when the full or shortened versionEPGIMPORTPATH = '/etc/epgimport/'
+EPGIMPORTPATH = '/etc/epgimport/'
 CFGPATH = os.path.join(ENIGMAPATH, 'e2m3u2bouquet/')
 PICONSPATH = '/usr/share/enigma2/picon/'
 IMPORTED = False
@@ -158,7 +158,7 @@ def reload_bouquets():
 def get_safe_filename(filename):
     """Normalizes filename string
     """
-    return re.sub('[-\s]+', '-', filename.decode('utf-8').translate({ord(c): None for c in ':%~}{]["^$#@*,!?&`|><+='})).strip().lower()
+    return re.sub('[-\s]+', '-', filename.decode('utf-8').translate({ord(c): None for c in '\/:%~}{]["^$#@*,!?&`|><+='})).strip().lower()
 
 def get_parser_args(program_license, program_version_message):
     parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
@@ -329,7 +329,7 @@ class Provider:
     def _get_picon_name(self, service_name):
         """Convert the service name to a Picon Service Name
         """
-        return service_name.decode('utf-8').translate({ord(c): None for c in ':%~}{]["^$#@*,-!?&`|><+='}).lower()
+        return service_name.decode('utf-8').translate({ord(c): None for c in '\/:%~}{]["^$#@*,-!?&`|><+='}).lower()
 
     def _parse_panel_bouquet(self):
         """Check providers bouquet for custom service references
