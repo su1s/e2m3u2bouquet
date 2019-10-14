@@ -34,13 +34,13 @@ from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 try:
     from enigma import eDVBDB
 except ImportError:
-    eDVBDB = None
+    pass
 from argparse import ArgumentParser,  RawDescriptionHelpFormatter
 
 __all__ = []
 __version__ = '0.8.4'
 __date__ = '2017-06-04'
-__updated__ = '2019-10-13'
+__updated__ = '2019-10-14'
 
 DEBUG = 0
 TESTRUN = 0
@@ -70,7 +70,6 @@ class AppUrlOpener(urllib.FancyURLopener):
     """Set user agent for downloads
     """
     version = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'
-
 
 def display_welcome():
     print('\n********************************')
@@ -150,17 +149,17 @@ def get_service_title(channel):
 def reload_bouquets():
     if not TESTRUN:
         print("\n----Reloading bouquets----")
-        if eDVBDB:
+        try:
             eDVBDB.getInstance().reloadBouquets()
-            print("bouquets reloaded...")
-        else:
-            os.system("wget -qO - http://127.0.0.1/web/servicelistreload?mode=2 > /dev/null 2>&1 &")
+        except:
+            response = urllib.urlopen('http://127.0.0.1/web/servicelistreload?mode=2')
+        finally:
             print("bouquets reloaded...")
 
-def get_safe_filename(filename):                                                                                                                            
-    """Normalizes filename string                                                                                                                           
-    """                                                                                                                                                     
-    return re.sub('[-\s]+', '-', filename.decode('utf-8').translate({ord(c): None for c in '%~}{]["^$#@*,-!?&`|><+='})).strip().lower() 
+def get_safe_filename(filename):
+    """Normalizes filename string
+    """
+    return re.sub('[-\s]+', '-', filename.decode('utf-8').translate({ord(c): None for c in '%~}{]["^$#@*,!?&`|><+='})).strip().lower() 
 
 def get_parser_args(program_license, program_version_message):
     parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
@@ -816,66 +815,64 @@ class Provider:
             filename = None
         self._m3u_file = filename
 
-    def parse_m3u(self):
-        """core parsing routine"""
-        # Extract and generate the following items from the m3u
-        # tvg-id
-        # tvg-name
-        # tvg-logo
-        # group-title
-        # stream-name
-        # stream-url
+    def regParse(self, parser, data):
+        match = parser.search(data)
+        return match.group(1).strip() if match else ''
 
+    def parse_m3u(self):
+        """core parsing routine
+        Look in:  https://tools.ietf.org/html/draft-pantos-http-live-streaming-23#section-4.3.2.1
+        m3u example:
+
+        #EXTINF:0 tvg-name="Important Channel" tvg-language="English" tvg-country="US" tvg-id="imp-001" tvg-logo="http://pathlogo/logo.jpg" group-title="Top10", Discovery Channel cCloudTV.ORG (Top10) (US) (English)
+        http://167.114.102.27/live/Eem9fNZQ8r_FTl9CXevikA/1461268502/a490ae75a3ec2acf16c9f592e889eb4c.m3u8|User-Agent=Mozilla%2F5.0%20(Windows%20NT%206.1%3B%20WOW64)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F47.0.2526.106%20Safari%2F537.36
+
+        """
         self._update_status('----Parsing m3u file----')
         print('\n{}'.format(Status.message))
+
+        idRe = re.compile('.*?tvg-id=[\'"](.*?)[\'"]')
+        nameRe = re.compile('.*?tvg-name=[\'"](.*?)[\'"]')
+        logoRe = re.compile('.*?tvg-logo=[\'"](.*?)[\'"]')
+        langRe = re.compile('.*?tvg-language=[\'"](.*?)[\'"]')
+        countryRe = re.compile('.*?tvg-country=[\'"](.*?)[\'"]')
+        groupRe = re.compile('.*?group-title=[\'"](.*?)[\'"]')
+
         try:
-            if not os.path.getsize(self._m3u_file):
-                msg = 'M3U file is empty. Check username & password'
-                print(msg)
-                if DEBUG:
-                    raise Exception(msg)
-        except Exception, e:
-            print(e)
-            if DEBUG:
-                raise
+            with open(self._m3u_file, "r") as f:
+                match = re.findall('(.+?),(.+)\s*(.+)\s*', f.read())
+                if not match:
+                    print("M3U file is empty. Check username & password")
+                    return
 
-        service_dict = {}
-        valid_services_found = False
-        service_valid = False
+                for extInfData, name, url in match:
+                    if name is None or name == "":
+                        name = self.regParse(nameRe, extInfData)
+                        if name == '':
+                            if DEBUG:
+                                print("No TITLE info found for this service - skip")
+                            continue 
+                    service_dict = {'tvg-id': self.regParse(idRe, extInfData),
+                                    'tvg-logo': self.regParse(logoRe, extInfData),
+                                    'group-title':self.regParse(groupRe, extInfData),
+                                    'tvg-name': self.regParse(nameRe, extInfData),
+                                    'tvg-language': self.regParse(langRe, extInfData),
+                                    'tvg-country': self.regParse(langRe, extInfData),
+                                    'stream-url': url,
+                                    'stream-name': name,
+                                    'nameOverride': '',
+                                    'categoryOverride': '',
+                                    'serviceRef': '',
+                                    'category_type': 'live',
+                                    'has_archive': False,
+                                    'enabled': True,
+                                    'serviceRefOverride': False,
+                                   }
 
-        with open(self._m3u_file, "r") as f:
-            for line in f:
-                if 'EXTM3U' in line or (line.startswith('#') and not line.startswith('#EXTINF')):  # First line or comments we are not interested
-                    continue
-                elif 'EXTINF:' in line:  # Info line - work out group and output the line
-                    service_valid = False
-                    service_dict = {}.fromkeys(['tvg-id', 'tvg-name', 'tvg-logo', 'group-title',
-                                                'stream-name', 'stream-url', 'nameOverride', 'categoryOverride', 'serviceRef',], '')
-                    service_dict.update({'category_type': 'live', 'has_archive': False, 'enabled': True, 'serviceRefOverride': False })
+                    # Set default name for any blank groups
+                    if service_dict['group-title'] == "":
+                         service_dict['group-title'] = u'None'
 
-                    # https://tools.ietf.org/html/draft-pantos-http-live-streaming-23#section-4.3.2.1
-                    # #EXTINF:<DURATION> [<KEY>="<VALUE>"]*,<TITLE> 
-
-                    try:
-                        keys, service_dict['stream-name'] = map(str.strip, line.split(':')[1].split(','))
-                    except:
-                        if DEBUG:                                                                                                                           
-                            msg = "No TITLE info found for this service - skpip"                                                                       
-                            print(msg)                                                                                                                      
-                        continue                         
-                    else:
-                        valid_services_found = True
-  
-                    # Parse all available tags in EXTINF line
-                    service_dict.update({k:v[1:-1] for k,v in [x.split('=') for x in keys.split() if '=' in x]})
-
-                    # Set default name for any blank group-title tag
-                    if service_dict['group-title'] == '':
-                        service_dict['group-title'] = u'None'
-                    service_valid = True
-
-                elif ('http:' in line or 'https:' in line or 'rtmp:' in line or 'rtsp:' in line) and service_valid is True:
-                    service_dict['stream-url'] = line.strip()
                     self._set_streamtypes_vodcats(service_dict)
 
                     if service_dict['group-title'] not in self._dictchannels:
@@ -883,11 +880,11 @@ class Provider:
                     else:
                         self._dictchannels[service_dict['group-title']].append(service_dict)
 
-            if not valid_services_found:
-                msg = "No extended playlist info found. Check m3u url should be 'type=m3u_plus'"
-                print(msg)
-                if DEBUG:
-                    raise Exception(msg)
+                if not self._dictchannels:
+                    print("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
+
+        except Exception, e:
+            print("Unable to open m3u file: {}".format(self._m3u_file))
 
         if not DEBUG:
             # remove m3u file
