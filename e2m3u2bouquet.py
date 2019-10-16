@@ -12,7 +12,7 @@ e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
 
 from __future__ import print_function
 import sys, os, glob
-# Uppend the directory for custom modules at the front of the path.                                                                     
+# Uppend the directory for custom modules at the front of the path.
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(ROOT_DIR, 'modules'))
 for wheel in glob.glob(os.path.join(ROOT_DIR, 'modules', '*.whl')): sys.path.insert(0, wheel)
@@ -22,7 +22,11 @@ import time
 import errno
 import imghdr
 import requests
-from PIL import Image
+try:
+    from PIL import Image
+    USE_PIL=True
+except:
+    USE_PIL=False
 from collections import OrderedDict
 from requests_file import FileAdapter
 from urllib3.packages.six.moves.urllib.parse import parse_qs, urlparse, quote, quote_plus
@@ -35,7 +39,7 @@ try:
     from enigma import eDVBDB
 except ImportError:
     pass
-from argparse import ArgumentParser,  RawDescriptionHelpFormatter
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 __all__ = []
 __version__ = '0.8.4'
@@ -111,7 +115,7 @@ def uninstaller():
             for fname in os.listdir(EPGIMPORTPATH):
                 if 'suls_iptv_' in fname:
                     os.remove(os.path.join(EPGIMPORTPATH, fname))
-        if os.path.isdir(CROSSEPGPATH):                                                                                                
+        if os.path.isdir(CROSSEPGPATH):
             for fname in os.listdir(CROSSEPGPATH):
                 if 'suls_iptv_' in fname:
                     os.remove(os.path.join(CROSSEPGPATH, fname))
@@ -250,7 +254,6 @@ class Provider:
                 logo_url = 'http://{}'.format(logo_url)
 
             # Get the full picon file name with path
-             
             picon_file = os.path.join(self.config.icon_path, self._get_picon_name(title))
             image_formats = ( "image/png", "image/jpeg", "image/jpg", "image/bmp",
                               "image/gif", "image/x-icon", "image/x-pcx" )
@@ -281,6 +284,7 @@ class Provider:
                     self._picon_create_empty(picon_file)
                     return
                 self._picon_post_processing(picon_file)
+
 
     def _picon_create_empty(self, picon_file):
         """
@@ -750,7 +754,7 @@ class Provider:
             self.download_panel_bouquet()
 
         # Download m3u
-        if self.download_m3u():       
+        if self.download_m3u():
             # parse m3u file
             self.parse_m3u()
 
@@ -788,8 +792,8 @@ class Provider:
             print("m3uurl = {}".format(self.config.m3u_url))
         try:
             s = requests.Session()
-            s.mount('file://', FileAdapter()) 
-            # Get playlist from URL or path to local file ('file:///path/to/file') 
+            s.mount('file://', FileAdapter())
+            # Get playlist from URL or path to local file ('file:///path/to/file')
             with s.get(self.config.m3u_url, headers=REQHEADERS, timeout=(5,30), allow_redirects=True) as r:
                self._m3u_file = r.text.encode('utf-8')
             return True
@@ -809,7 +813,6 @@ class Provider:
 
         #EXTINF:0 tvg-name="Important Channel" tvg-language="English" tvg-country="US" tvg-id="imp-001" tvg-logo="http://pathlogo/logo.jpg" group-title="Top10", Discovery Channel cCloudTV.ORG (Top10) (US) (English)
         http://167.114.102.27/live/Eem9fNZQ8r_FTl9CXevikA/1461268502/a490ae75a3ec2acf16c9f592e889eb4c.m3u8|User-Agent=Mozilla%2F5.0%20(Windows%20NT%206.1%3B%20WOW64)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F47.0.2526.106%20Safari%2F537.36
-
         """
         # Set regexp patterns
         m3uRe = re.compile('(.+?),(.+)\s*(.+)\s*')
@@ -988,7 +991,11 @@ class Provider:
                 # Download Picon if not VOD
                 for x in self._dictchannels[cat]:
                     if not x['stream-name'].startswith('placeholder_'):
-                        self._download_picon_file(x['tvg-logo'], get_service_title(x))
+                        # If the PIL or pillow module is installed, then download the picon files
+                        if USE_PIL:
+                            self._download_picon_file(x['tvg-logo'], get_service_title(x))
+                if DEBUG and not USE_PIL:
+                    print("No PIL or pillow python module found. Download picons - disabled")
 
         self._update_status('Picons download completed...')
         print('\n{}'.format(Status.message))
@@ -1320,8 +1327,8 @@ class Provider:
             # create epg-importer sources file for providers feed
             self._create_epgimport_source([self.config.epg_url])
 
-            # create CrossEPG sources file for providers feed                                                                       
-            self._create_crossepg_source([self.config.epg_url]) 
+            # create CrossEPG sources file for providers feed
+            self._create_crossepg_source([self.config.epg_url])
 
             # create epg-importer sources file for additional feeds
             for group in self._xmltv_sources_list:
