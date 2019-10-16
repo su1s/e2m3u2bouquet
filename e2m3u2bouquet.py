@@ -382,8 +382,8 @@ class Provider:
         category_order = []
         mapping_file = self._get_mapping_file()
         if mapping_file:
-            self._update_status('----Parsing custom bouquet order----')
-            print('\n'.format(Status.message))
+            self._update_status('\n----Parsing custom bouquet order----')
+            print(Status.message)
 
             try:
                 tree = ET.ElementTree(file=mapping_file)
@@ -412,7 +412,7 @@ class Provider:
 
                     self._category_options[category] = dictoption
 
-                self._update_status('custom bouquet order applied...')
+                self._update_status('\n--- custom bouquet order applied ---')
                 print(Status.message)
             except Exception:
                 msg = 'Corrupt override.xml file'
@@ -427,8 +427,8 @@ class Provider:
         """
         mapping_file = self._get_mapping_file()
         if mapping_file:
-            self._update_status('----Parsing custom channel order, please be patient----')
-            print('\n{}'.format(Status.message))
+            self._update_status('\n----Parsing custom channel order, please be patient----')
+            print(Status.message)
 
             try:
                 tree = ET.ElementTree(file=mapping_file)
@@ -477,7 +477,7 @@ class Provider:
                         # sort the channels by new order
                         channel_order_dict = {channel: index for index, channel in enumerate(listchannels)}
                         self._dictchannels[cat].sort(key=lambda x: channel_order_dict[x['stream-name']])
-                self._update_status('custom channel order applied...')
+                self._update_status('\n--- custom channel order applied ---')
                 print(Status.message)
 
                 # apply overrides
@@ -521,7 +521,7 @@ class Provider:
                                 if clear_stream_url:
                                     x['stream-url'] = ''
                                 break
-                self._update_status('custom overrides applied...')
+                self._update_status('\n--- custom overrides applied ---')
                 print(Status.message)
             except Exception:
                 msg = 'Corrupt override.xml file'
@@ -590,8 +590,8 @@ class Provider:
     def _create_all_channels_bouquet(self):
         """Create the Enigma2 all channels bouquet
         """
-        self._update_status('----Creating all channels bouquet----')
-        print('\n{}'.format(Status.message))
+        self._update_status('\n----Creating all channels bouquet----')
+        print(Status.message)
 
         bouquet_indexes = []
 
@@ -633,7 +633,7 @@ class Provider:
 
         # Add to bouquet index list
         bouquet_indexes.append(self._get_bouquet_index_name(cat_filename, provider_filename))
-        self._update_status('all channels bouquet created ...')
+        self._update_status('\n--- All channels bouquet created ---')
         print(Status.message)
         return bouquet_indexes
 
@@ -694,13 +694,13 @@ class Provider:
                 self.config.password = password_param[0]
 
     def _update_status(self, message):
-        Status.message = '{}: {}'.format(self.config.name, message)
+        Status.message += '{}: {}'.format(self.config.name, message)
 
     def _process_provider_update(self):
         """Download provider update file from url"""
         updated = False
-        self._update_status('----Downloading providers update file----')
-        print('\n{}'.format(Status.message))
+        self._update_status('\n--- Downloading providers update file ---')
+        print(Status.message)
         print('provider update url = ', self.config.provider_update_url)
         try:
            with requests.get(self.config.provider_update_url, headers=REQHEADERS, stream=True, timeout=(5,30)) as r:
@@ -771,10 +771,10 @@ class Provider:
             # Create bouquet files
             self.create_bouquets()
             # Now create custom channels for each bouquet
-            self._update_status('----Creating EPG-Importer config ----')
-            print('\n{}'.format(Status.message))
+            self._update_status('\n--- Creating EPG-Importer config ---')
+            print(Status.message)
             self.create_epg_config()
-            self._update_status('EPG-Importer config created...')
+            self._update_status('\n--- EPG-Importer config created ---')
             print(Status.message)
 
         Status.is_running = False
@@ -786,8 +786,8 @@ class Provider:
 
     def download_m3u(self):
         """Get m3u file from url"""
-        self._update_status('----Downloading m3u file----')
-        print("\n{}".format(Status.message))
+        self._update_status('\n--- Downloading m3u file ---')
+        print(Status.message)
         if DEBUG:
             print("m3uurl = {}".format(self.config.m3u_url))
         try:
@@ -798,7 +798,7 @@ class Provider:
                self._m3u_file = r.text.encode('utf-8')
             return True
         except Exception:
-            self._update_status('Unable to download m3u file')
+            self._update_status('\n--- Unable to download m3u file ---')
             print(Status.message)
             return False
 
@@ -825,11 +825,11 @@ class Provider:
 
         match = re.findall(m3uRe, self._m3u_file)
         if match:
-            self._update_status('----Parsing {} channels in m3u----'.format(len(match)))
-            print('\n{}'.format(Status.message))
+            self._update_status('\n--- Parsing {} channels in m3u ---'.format(len(match)))
+            print(Status.message)
         else:
-            self._update_status('--No records found or m3u is empty--'.format(len(match)))
-            print('\n{}'.format(Status.message))
+            self._update_status('\n--No records found or m3u is empty--'.format(len(match)))
+            print(Status.message)
             return
 
         for extInfData, name, url in match:
@@ -956,14 +956,14 @@ class Provider:
                         datafile.write("{}\n".format(linevals))
             datafile.close()
 
-        self._update_status('--- m3u successfully parsed ---')
-        print('\n{}'.format(Status.message))
+        self._update_status('\n--- m3u successfully parsed ---')
+        print(Status.message)
 
     def download_panel_bouquet(self):
         """Download panel bouquet file from url
         """
-        self._update_status('---Downloading providers bouquet file----')
-        print('\n{}'.format(Status.message))
+        self._update_status('\n--- Downloading providers bouquet file ---')
+        print(Status.message)
         if DEBUG:
             print("bouqueturl = {}".format(self.config.bouquet_url))
         try:
@@ -978,11 +978,11 @@ class Provider:
 
     def download_picons(self):
         if not USE_PIL:
-            self._update_status('Python PIL module not found. Download picons - disabled!')
-            print('\n{}'.format(Status.message))
+            self._update_status('\n-- Python PIL module not found. Download picons - disabled! --')
+            print(Status.message)
             return
-        self._update_status('----Downloading Picon files, please be patient----')
-        print('\n{}'.format(Status.message))
+        self._update_status('\n--- Downloading Picon files, please be patient ---')
+        print(Status.message)
         print('If no Picons exist this will take a few minutes')
         try:
             os.makedirs(self.config.icon_path)
@@ -997,8 +997,8 @@ class Provider:
                     if not x['stream-name'].startswith('placeholder_'):
                         self._download_picon_file(x['tvg-logo'], get_service_title(x))
 
-        self._update_status('Picons download completed...')
-        print('\n{}'.format(Status.message))
+        self._update_status('\n--- Picons download completed ---')
+        print(Status.message)
         print('Box will need restarted for Picons to show...')
 
     def parse_map_xmltvsources_xml(self):
@@ -1179,8 +1179,8 @@ class Provider:
     def create_bouquets(self):
         """Create the Enigma2 bouquets
         """
-        self._update_status('----Creating bouquets----')
-        print('\n{}'.format(Status.message))
+        self._update_status('\n --- Creating bouquets ---')
+        print(Status.message)
         # clean old bouquets before writing new
         if self._dictchannels:
             for fname in os.listdir(ENIGMAPATH):
@@ -1283,7 +1283,7 @@ class Provider:
         # write the bouquets.tv indexes
         self._save_bouquet_index_entries(iptv_bouquet_list)
 
-        self._update_status('bouquets created ...')
+        self._update_status('\n--- bouquets created ---')
         print(Status.message)
 
     def create_epg_config(self):
