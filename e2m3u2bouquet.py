@@ -977,6 +977,10 @@ class Provider:
                 raise msg
 
     def download_picons(self):
+        if not USE_PIL:
+            self._update_status('Python PIL module not found. Download picons - disabled!')
+            print('\n{}'.format(Status.message))
+            return
         self._update_status('----Downloading Picon files, please be patient----')
         print('\n{}'.format(Status.message))
         print('If no Picons exist this will take a few minutes')
@@ -991,11 +995,7 @@ class Provider:
                 # Download Picon if not VOD
                 for x in self._dictchannels[cat]:
                     if not x['stream-name'].startswith('placeholder_'):
-                        # If the PIL or pillow module is installed, then download the picon files
-                        if USE_PIL:
-                            self._download_picon_file(x['tvg-logo'], get_service_title(x))
-                if DEBUG and not USE_PIL:
-                    print("No PIL or pillow python module found. Download picons - disabled")
+                        self._download_picon_file(x['tvg-logo'], get_service_title(x))
 
         self._update_status('Picons download completed...')
         print('\n{}'.format(Status.message))
