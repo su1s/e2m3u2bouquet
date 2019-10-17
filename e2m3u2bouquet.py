@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-# -*- coding: utf-8 -*-
+#-*- coding: utf-8 -*-
 
 """
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
@@ -46,7 +46,7 @@ __version__ = '0.8.4'
 __date__ = '2017-06-04'
 __updated__ = '2019-10-14'
 
-DEBUG = 1
+DEBUG = 0
 TESTRUN = 0
 
 ENIGMAPATH = '/etc/enigma2/'
@@ -646,8 +646,6 @@ class Provider:
         # write providers epg feed
         source_filename = os.path.join(CROSSEPGPATH, 'suls_iptv_{}.conf'.format(get_safe_filename(source_name)))
 
-        print(sources)
-
         with open(source_filename, "w+") as f:
             f.write('description={}\n'.format(xml_escape(source_name)))
             f.write('protocol=xmltv\n')
@@ -694,7 +692,7 @@ class Provider:
                 self.config.password = password_param[0]
 
     def _update_status(self, message):
-        Status.message += '{}: {}'.format(self.config.name, message)
+        Status.message = '{}: {}'.format(self.config.name, message)
 
     def _process_provider_update(self):
         """Download provider update file from url"""
@@ -793,7 +791,7 @@ class Provider:
         try:
             s = requests.Session()
             s.mount('file://', FileAdapter())
-            # Get playlist from URL or path to local file ('file:///path/to/file')
+            # Get playlist from URL or local m3u file ('file:///path/to/file')
             with s.get(self.config.m3u_url, headers=REQHEADERS, timeout=(5,30), allow_redirects=True) as r:
                self._m3u_file = r.text.encode('utf-8')
             return True
@@ -1179,7 +1177,7 @@ class Provider:
     def create_bouquets(self):
         """Create the Enigma2 bouquets
         """
-        self._update_status('\n --- Creating bouquets ---')
+        self._update_status('\n--- Creating bouquets ---')
         print(Status.message)
         # clean old bouquets before writing new
         if self._dictchannels:
