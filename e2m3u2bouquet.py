@@ -121,13 +121,12 @@ def uninstaller():
         # bouquets.tv
         print('Removing IPTV bouquets from bouquets.tv...')
         os.rename(os.path.join(ENIGMAPATH, 'bouquets.tv'), os.path.join(ENIGMAPATH, 'bouquets.tv.bak'))
-        tvfile = open(os.path.join(ENIGMAPATH, 'bouquets.tv'), 'w+')
-        bakfile = open(os.path.join(ENIGMAPATH, 'bouquets.tv.bak'))
-        for line in bakfile:
-            if '.suls_iptv_' not in line:
-                tvfile.write(line)
-        bakfile.close()
-        tvfile.close()
+        with open(os.path.join(ENIGMAPATH, 'bouquets.tv'), 'w+') as tvfile, \
+               open(os.path.join(ENIGMAPATH, 'bouquets.tv.bak')) as bakfile:
+            for line in bakfile:
+                if '.suls_iptv_' not in line:
+                    tvfile.write(line)
+
     except Exception:
         print('Unable to uninstall')
         raise
@@ -262,37 +261,34 @@ class Provider:
         total = len(live_service_list)
         for service in enumerate(live_service_list, start=1):
             count, x = service
-            logo_url, title = x['tvg-logo'], get_service_title(x) # for #extinf m3u title as a file name
+            logo_url, title = x['tvg-logo'], get_service_title(x) # for extinf m3u title as a file name
             # logo_url, title = x['tvg-logo'], ''.join(x.get('serviceRef').split('.', 1)).replace(':', '_') # for service ref as a filename
-            if not logo_url.startswith('http'):
-                logo_url  = 'http://{}'.format(logo_url )
 
             # Get the full picon file name with path
             picon_file = os.path.join(self.config.icon_path, self._get_picon_name(title))
+
+            if not filter(os.path.isfile, glob.glob(picon_file + '*')):
+                if DEBUG:
+                    print("Picon file doesn't exist downloading\nPiconURL: {}".format(logo_url))
+                try:
+                    with requests.get(logo_url, headers=REQHEADERS, timeout=(5,30)) as r, \
+                            open(picon_file, 'wb') as f:
+                        if r.headers.get('Content-type') in image_formats:
+                                f.write(r.content)
+                        else:
+                            raise ValueError('Download Picon format not supported, skipping')
+
+                except Exception, e:
+                    if DEBUG:
+                        print(e)
+                    self._picon_create_empty(picon_file)
+                else:
+                    self._picon_post_processing(picon_file)
 
             # Output some kind of progress indicator
             if not IMPORTED:
                 # don't output when called from the plugin
                 progressbar(count, total, status='Done')
-
-            if not filter(os.path.isfile, glob.glob(picon_file + '*')):
-                if DEBUG:
-                    print("Picon file doesn't exist downloading")
-                    print('PiconURL: {}'.format(logo_url))
-                try:
-                    with requests.get(logo_url, headers=REQHEADERS, timeout=(5,30)) as r:
-                        if r.headers['Content-type'] in image_formats:
-                            with open(picon_file, 'wb') as f:
-                                f.write(r.content)
-                        else:
-                            raise ValueError('Download Picon format not supported, skipping') 
-
-                except (requests.exceptions.RequestException, ValueError, IOError) as e:
-                    if DEBUG:
-                        print(repr.e)
-                    self._picon_create_empty(picon_file)
-                else:
-                    self._picon_post_processing(picon_file)
 
 
 
@@ -402,10 +398,10 @@ class Provider:
 
                     category = node.attrib.get('name')
                     if not type(category) is unicode:
-                        category = category.decode("utf-8")
+                        category = category.decode('utf-8')
                     cat_title_override = node.attrib.get('nameOverride', '')
                     if not type(cat_title_override) is unicode:
-                        cat_title_override = cat_title_override.decode("utf-8")
+                        cat_title_override = cat_title_override.decode('utf-8')
                     dictoption['nameOverride'] = cat_title_override
                     dictoption['idStart'] = int(node.attrib.get('idStart', '0')) \
                         if node.attrib.get('idStart', '0').isdigit() else 0
@@ -447,7 +443,6 @@ class Provider:
                     if not cat.startswith("VOD"):
                         # We don't override any individual VOD streams
                         sortedchannels = []
-                        listchannels = []
 
                         # find channels that are to be moved to this category (categoryOverride)
                         for node in tree.findall(u'.//channel[@categoryOverride="{}"]'.format(cat)):
@@ -466,8 +461,7 @@ class Provider:
                                 # remove from existing category and add to new
                                 self._dictchannels[cat].append(self._dictchannels[category].pop(channel_index))
 
-                        for x in self._dictchannels[cat]:
-                            listchannels.append(x['stream-name'])
+                        listchannels = [x['stream-name'] for x in self._dictchannels[cat]]
 
                         for node in tree.findall(u'.//channel[@category="{}"]'.format(cat)):
                             # Check for placeholders, give unique name, insert into sorted channels and dictchannels[cat]
@@ -554,8 +548,8 @@ class Provider:
         """Add service to bouquet file
         """
         if not channel['stream-name'].startswith('placeholder_'):
-            f.write("#SERVICE {}:{}:\n".format(channel['serviceRef'], quote(channel['stream-url'])))
-            f.write("#DESCRIPTION {}\n".format(get_service_title(channel).encode("utf-8")))
+            f.write('#SERVICE {}:{}:\n'.format(channel['serviceRef'], quote(channel['stream-url'])))
+            f.write(u'#DESCRIPTION {}\n'.format(get_service_title(channel)))
         else:
             f.write('{}\n'.format(PLACEHOLDER_SERVICE))
 
@@ -592,9 +586,8 @@ class Provider:
             for line in f:
                 if line.startswith('#NAME'):
                     continue
-                else:
-                    if not '.suls_iptv_{}'.format(get_safe_filename(self.config.name)) in line:
-                        current_bouquets_indexes.append(line)
+                elif not '.suls_iptv_{}'.format(get_safe_filename(self.config.name)) in line:
+                    current_bouquets_indexes.append(line)
         return current_bouquets_indexes
 
     def _create_all_channels_bouquet(self):
@@ -611,14 +604,13 @@ class Provider:
         provider_filename = get_safe_filename(self.config.name)
 
         # create file
-        bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}_{}.tv'
-                                        .format(provider_filename, cat_filename))
+        bouquet_filepath = os.path.join(ENIGMAPATH, 'userbouquet.suls_iptv_{}_{}.tv'.format(provider_filename, cat_filename))
+
         if DEBUG:
             print("Creating: {}".format(bouquet_filepath))
 
         with open(bouquet_filepath, 'w+') as f:
-            f.write('#NAME {} - {}\n'.format(self.config.name.encode('utf-8'), bouquet_name.encode('utf-8')))
-
+            f.write(u'#NAME {} - {}\n'.format(self.config.name, bouquet_name))
 
             # write place holder channels (for channel numbering)
             for i in xrange(100):
@@ -630,8 +622,8 @@ class Provider:
                     if cat not in vod_categories:
                         cat_title = get_category_title(cat, self._category_options)
                         # Insert group description placeholder in bouquet
-                        f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0:\n")
-                        f.write("#DESCRIPTION {}\n".format(cat_title.encode('utf-8')))
+                        f.write('#SERVICE 1:64:0:0:0:0:0:0:0:0:\n')
+                        f.write(u'#DESCRIPTION {}\n'.format(cat_title))
                         for x in self._dictchannels[cat]:
                             if x.get('enabled') or x['stream-name'].startswith('placeholder_'):
                                 self._save_bouquet_entry(f, x)
@@ -706,7 +698,6 @@ class Provider:
 
     def _process_provider_update(self):
         """Download provider update file from url"""
-        updated = False
         self._update_status('\n--- Downloading providers update file ---')
         print(Status.message)
         print('provider update url = ', self.config.provider_update_url)
@@ -714,18 +705,17 @@ class Provider:
            with requests.get(self.config.provider_update_url, headers=REQHEADERS, stream=True, timeout=(5,30)) as r:
                for line in r.iter_lines():
                    if line:
-                       name, m3u, epg = line.encode('utf-8').split(',')
+                       name, m3u, epg = line.encode('utf-8').strip().split(',')
                        # check we have name and m3u values
                        if name and m3u:
                            self.config.name = name
                            self.config.m3u_url = m3u
                            self.config.epg_url = epg if epg else self.config.epg_url
                            self.config.last_provider_update = int(time.time())
-                           updated = True
+                           return True
         except:
             print('[e2m3u2b] _process_provider_update error unable to read providers update file')
-
-        return updated
+            return False
 
     def process_provider(self):
         Status.is_running = True
@@ -999,11 +989,12 @@ class Provider:
                 raise
 
         for cat in self._dictchannels:
-            self._update_status('\n--- Update picons for {} ---'.format(cat.encode('utf-8')))
+            self._update_status(u'\n--- Update picons for {} ---'.format(cat))
             print(Status.message) 
             self._download_picon_file([x for x in self._dictchannels[cat] if not x['stream-name'].startswith('placeholder_')
-                                        and x['tvg-logo'] and not cat.startswith('VOD')])
-     
+                                        and x['tvg-logo'] and urlparse(x['tvg-logo']).scheme in ('http','https')
+                                        and not cat.startswith('VOD')])
+
         self._update_status('\n--- Picons download completed ---')
         print(Status.message)
         print('Box will need restarted for Picons to show...')
@@ -1115,10 +1106,10 @@ class Provider:
                     if cat in self._dictchannels:
                         if not cat.startswith('VOD -'):
                             cat_title_override = self._category_options[cat].get('nameOverride', '')
-                            f.write('{}<category name="{}" nameOverride="{}" idStart="{}" enabled="{}" customCategory="{}"/>\r\n'
+                            f.write(u'{}<category name="{}" nameOverride="{}" idStart="{}" enabled="{}" customCategory="{}"/>\r\n'
                                     .format(2 * indent,
-                                            xml_escape(cat).encode('utf-8'),
-                                            xml_escape(cat_title_override).encode('utf-8'),
+                                            xml_escape(cat),
+                                            xml_escape(cat_title_override),
                                             self._category_options[cat].get('idStart', ''),
                                             str(self._category_options[cat].get('enabled', True)).lower(),
                                             str(self._category_options[cat].get('customCategory', False)).lower()
@@ -1130,12 +1121,8 @@ class Provider:
                             if 'VOD' in self._category_options:
                                 cat_title_override = self._category_options['VOD'].get('nameOverride', '')
                                 cat_enabled = self._category_options['VOD'].get('enabled', True)
-                            f.write('{}<category name="{}" nameOverride="{}" enabled="{}" />\r\n'
-                                    .format(2 * indent,
-                                            'VOD',
-                                            xml_escape(cat_title_override).encode('utf-8'),
-                                            str(cat_enabled).lower()
-                                            ))
+                            f.write(u'{}<category name="{}" nameOverride="{}" enabled="{}" />\r\n'
+                                    .format(2 * indent, 'VOD', xml_escape(cat_title_override), str(cat_enabled).lower()))
                             vod_category_output = True
 
                 f.write('{}</categories>\r\n'.format(indent))
@@ -1145,28 +1132,22 @@ class Provider:
                     if cat in self._dictchannels:
                         # Don't output any of the VOD channels
                         if not cat.startswith('VOD'):
-                            f.write('{}<!-- {} -->\r\n'.format(2 * indent, xml_escape(cat.encode('utf-8'))))
+                            f.write(u'{}<!-- {} -->\r\n'.format(2 * indent, xml_escape(cat)))
                             for x in self._dictchannels[cat]:
                                 if not x['stream-name'].startswith('placeholder_'):
-                                    f.write('{}<channel name="{}" nameOverride="{}" tvg-id="{}" tvg-name="{}" enabled="{}" category="{}" categoryOverride="{}" serviceRef="{}" clearStreamUrl="{}" />\r\n'
+                                    f.write(u'{}<channel name="{}" nameOverride="{}" tvg-id="{}" tvg-name="{}" enabled="{}" category="{}" categoryOverride="{}" serviceRef="{}" clearStreamUrl="{}" />\r\n'
                                             .format(2 * indent,
-                                                    xml_escape(x['stream-name'].encode('utf-8')),
-                                                    xml_escape(x.get('nameOverride', '').encode('utf-8')),
-                                                    xml_escape(x['tvg-id'].encode('utf-8')),
-                                                    xml_escape(x['tvg-name'].encode('utf-8')),
+                                                    xml_escape(x['stream-name']),
+                                                    xml_escape(x.get('nameOverride', '')),
+                                                    xml_escape(x['tvg-id']),
+                                                    xml_escape(x['tvg-name']),
                                                     str(x['enabled']).lower(),
-                                                    xml_escape(x['group-title'].encode('utf-8')),
-                                                    xml_escape(x.get('categoryOverride', '').encode('utf-8')),
-                                                    xml_escape(x['serviceRef']),
-                                                    'false' if x['stream-url'] else 'true'
+                                                    xml_escape(x['group-title']),
+                                                    xml_escape(x.get('categoryOverride', '')),
+                                                    xml_escape(x['serviceRef']),'false' if x['stream-url'] else 'true'
                                                     ))
                                 else:
-                                    f.write(
-                                        '{}<channel name="{}" category="{}" />\r\n'
-                                        .format(2 * indent,
-                                                'placeholder',
-                                                xml_escape(cat.encode('utf-8')),
-                                                ))
+                                    f.write(u'{}<channel name="{}" category="{}" />\r\n'.format(2 * indent, 'placeholder', xml_escape(cat)))
 
                 f.write('{}</channels>\r\n'.format(indent))
                 f.write('</mapping>')
@@ -1211,7 +1192,7 @@ class Provider:
 
                 if cat not in vod_categories or self.config.multi_vod:
                     with open(bouquet_filepath, "w+") as f:
-                        bouquet_name = '{} - {}'.format(self.config.name, cat_title.encode('utf-8')).decode("utf-8")
+                        bouquet_name = u'{} - {}'.format(self.config.name, cat_title).decode("utf-8")
                         if not cat.startswith('VOD -'):
                             if cat in self._category_options and self._category_options[cat].get('nameOverride', False):
                                 bouquet_name = self._category_options[cat]['nameOverride'].decode('utf-8')
@@ -1221,7 +1202,7 @@ class Provider:
                                     .format(self._category_options['VOD']['nameOverride'].decode('utf-8'),
                                             cat_title.replace('VOD - ', '').decode("utf-8"))
                         channel_num = 0
-                        f.write("#NAME {}\n".format(bouquet_name.encode("utf-8")))
+                        f.write(u'#NAME {}\n'.format(bouquet_name))
                         if not channel_number_start_offset_output and not self.config.all_bouquet:
                             # write place holder services (for channel numbering)
                             for i in xrange(100):
@@ -1240,12 +1221,12 @@ class Provider:
                 elif not vod_category_output and not self.config.multi_vod:
                     # not multivod - output all the vod services in one file
                     with open(bouquet_filepath, "w+") as f:
-                        bouquet_name = '{} - VOD'.format(self.config.name).decode("utf-8")
+                        bouquet_name = '{} - VOD'.format(self.config.name).decode('utf-8')
                         if 'VOD' in self._category_options and self._category_options['VOD'].get('nameOverride', False):
                             bouquet_name = self._category_options['VOD']['nameOverride'].decode('utf-8')
 
                         channel_num = 0
-                        f.write("#NAME {}\n".format(bouquet_name.encode("utf-8")))
+                        f.write(u"#NAME {}\n".format(bouquet_name))
                         if not channel_number_start_offset_output and not self.config.all_bouquet:
                             # write place holder services (for channel numbering)
                             for i in xrange(100):
@@ -1256,8 +1237,8 @@ class Provider:
                         for vodcat in vod_categories:
                             if vodcat in self._dictchannels:
                                 # Insert group description placeholder in bouquet
-                                f.write("#SERVICE 1:64:0:0:0:0:0:0:0:0:\n")
-                                f.write("#DESCRIPTION {}\n". format(vodcat.encode("utf-8")))
+                                f.write('#SERVICE 1:64:0:0:0:0:0:0:0:0:\n')
+                                f.write(u'#DESCRIPTION {}\n'.format(vodcat))
                                 for x in self._dictchannels[vodcat]:
                                     self._save_bouquet_entry(f, x)
                                     channel_num += 1
@@ -1300,21 +1281,17 @@ class Provider:
                         if not cat.startswith('VOD'):
                             cat_title = get_category_title(cat, self._category_options)
 
-                            f.write('{}<!-- {} -->\n'.format(indent, xml_escape(cat_title.encode('utf-8'))))
+                            f.write(u'{}<!-- {} -->\n'.format(indent, xml_escape(cat_title)))
                             for x in self._dictchannels[cat]:
                                 if not x['stream-name'].startswith('placeholder_'):
                                     tvg_id = x.get('tvg-id')
                                     if not tvg_id:
                                        tvg_id = x.get('tvg-name', get_service_title(x))
                                     if x['enabled']:
-                                        # force the epg channels to stream type '1'
-                                        epg_service_ref = x['serviceRef']
-                                        pos = epg_service_ref.find(':')
-                                        if pos != -1:
-                                            epg_service_ref = '1{}'.format(epg_service_ref[pos:])
-                                        f.write('{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
-                                                .format(indent, xml_escape(tvg_id.encode('utf-8')), epg_service_ref,
-                                                          xml_escape(get_service_title(x).encode('utf-8'))))
+                                        f.write(u'{}<channel id="{}">{}:http%3a//example.m3u8</channel> <!-- {} -->\n'
+                                                .format(indent, xml_escape(tvg_id),
+                                                           x['serviceRef'].replace(x['stream-type'], '1', 1), # force the epg channels to stream type '1'
+                                                               xml_escape(get_service_title(x))))
                 f.write('</channels>\n')
 
             # create epg-importer sources file for providers feed
