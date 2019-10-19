@@ -36,11 +36,12 @@ except ImportError:
     eDVBDB = None
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
+from xml.sax.saxutils import escape as xml_escape
 
 __all__ = []
-__version__ = '0.8.3'
+__version__ = '0.8.4'
 __date__ = '2017-06-04'
-__updated__ = '2019-10-04'
+__updated__ = '2019-10-19'
 
 DEBUG = 0
 TESTRUN = 0
@@ -163,23 +164,6 @@ def xml_safe_comment(string):
     return string.replace('--', '- - ')
 
 
-def xml_escape(string):
-    return string.replace("&", "&amp;") \
-        .replace("\"", "&quot;") \
-        .replace("'", "&apos;") \
-        .replace("<", "&lt;") \
-        .replace(">", "&gt;")
-
-
-def xml_unescape(string):
-    return string.replace('&quot;', '"') \
-        .replace() \
-        .replace("&apos;", "'") \
-        .replace("&lt;", "<") \
-        .replace("&gt;", ">") \
-        .replace("&amp;", "&")
-
-
 def get_safe_filename(filename):
     """Convert filename to safe filename
     """
@@ -189,6 +173,7 @@ def get_safe_filename(filename):
     name = unicodedata.normalize('NFKD', unicode(name, 'utf_8')).encode('ASCII', 'ignore')
     name = re.sub('[^a-z0-9-_]', '', name.lower())
     return name
+
 
 def get_parser_args(program_license, program_version_message):
     parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
@@ -403,8 +388,7 @@ class Provider:
 
         if (parsed_stream_url.path.endswith('ts') or parsed_stream_url.path.endswith('.m3u8')) \
                 or not ext \
-                and not is_m3u8_vod \
-                and not service_dict['group-title'].startswith('VOD'):
+                and not is_m3u8_vod:
             service_dict['stream-type'] = '4097' if self.config.iptv_types else '1'
             if self.config.streamtype_tv:
                 # Set custom TV stream type if supplied - this overrides all_iptv_stream_types
@@ -460,6 +444,24 @@ class Provider:
 
         return category_order
 
+    def _set_category_type(self):
+        """set category type (live/vod)
+        """
+        for cat in self._category_order:
+            if cat != 'VOD':
+                if self._dictchannels.get(cat):
+                    if self._category_options.get(cat) is None:
+                        dictoption = {'nameOverride': '', 'idStart': 0, 'enabled': True, 'customCategory': False,
+                                      type: 'live'}
+                        self._category_options[cat] = dictoption
+                    # set category type (live/vod) to same as first stream in cat
+                    self._category_options[cat]["type"] = self._dictchannels[cat][0].get("category_type", "live")
+            else:
+                if self._category_options.get(cat) is None:
+                    dictoption = {'nameOverride': '', 'idStart': 0, 'enabled': True, 'customCategory': False,
+                                  type: 'vod'}
+                    self._category_options[cat] = dictoption
+
     def _parse_map_channels_xml(self):
         """Check for channels within mapping override file and apply if found
         """
@@ -472,8 +474,8 @@ class Provider:
                 tree = ET.ElementTree(file=mapping_file)
                 i = 0
                 for cat in self._dictchannels:
-                    if not cat.startswith("VOD"):
-                        # We don't override any individual VOD streams
+                    if self._category_options[cat].get('type', 'live') == 'live':
+                        # Only override live (not vod) streams
                         sortedchannels = []
                         listchannels = []
 
@@ -633,7 +635,7 @@ class Provider:
 
         bouquet_indexes = []
 
-        vod_categories = list(cat for cat in self._category_order if cat.startswith('VOD -'))
+        vod_categories = list(cat for cat in self._category_order if self._category_options[cat].get('type', 'live') == 'vod')
         bouquet_name = '{} All Channels'.format(self.config.name)
         cat_filename = get_safe_filename(bouquet_name)
         provider_filename = get_safe_filename(self.config.name)
@@ -889,7 +891,7 @@ class Provider:
                                     'stream-url': '', 'enabled': True, 'nameOverride': '', 'categoryOverride': '',
                                     'serviceRef': '', 'serviceRefOverride': False
                                     }
-                    if line.find('tvg-') == -1:
+                    if line.find('tvg-') == -1 and line.find('group-') == -1:
                         if DEBUG:
                             msg = "No extended playlist info found for this service'"
                             print(msg)
@@ -942,6 +944,7 @@ class Provider:
         sorted_categories.extend(self._category_order)
         # remove duplicates, keep order
         self._category_order = OrderedDict((x, True) for x in sorted_categories).keys()
+        self._set_category_type()
 
         # Check for and parse override map
         self._parse_map_channels_xml()
@@ -996,12 +999,12 @@ class Provider:
 
         if vod_index is not None:
             # move all VOD categories to VOD placeholder position or place at end
-            vodcategories = list((cat for cat in self._category_order if cat.startswith('VOD -')))
-            if len(vodcategories):
+            vod_categories = list((cat for cat in self._category_order if self._category_options[cat].get('type', 'live') == 'vod'))
+            if len(vod_categories):
                 # remove the vod category(s) from current position
-                self._category_order = [x for x in self._category_order if x not in vodcategories]
+                self._category_order = [x for x in self._category_order if x not in vod_categories]
                 # insert the vod category(s) at the placeholder / first pos
-                self._category_order[vod_index:vod_index] = vodcategories
+                self._category_order[vod_index:vod_index] = vod_categories
                 try:
                     self._category_order.remove("VOD")
                 except ValueError:
@@ -1055,7 +1058,7 @@ class Provider:
                 raise
 
         for cat in self._dictchannels:
-            if not cat.startswith('VOD'):
+            if self._category_options[cat].get('type', 'live') == 'live':
                 # Download Picon if not VOD
                 for x in self._dictchannels[cat]:
                     if not x['stream-name'].startswith('placeholder_'):
@@ -1180,7 +1183,7 @@ class Provider:
                 f.write('{}<categories>\r\n'.format(indent))
                 for cat in self._category_order:
                     if cat in self._dictchannels:
-                        if not cat.startswith('VOD -'):
+                        if self._category_options[cat].get('type', 'live') == 'live':
                             cat_title_override = self._category_options[cat].get('nameOverride', '')
                             f.write('{}<category name="{}" nameOverride="{}" idStart="{}" enabled="{}" customCategory="{}"/>\r\n'
                                     .format(2 * indent,
@@ -1211,7 +1214,7 @@ class Provider:
                 for cat in self._category_order:
                     if cat in self._dictchannels:
                         # Don't output any of the VOD channels
-                        if not cat.startswith('VOD'):
+                        if self._category_options[cat].get('type', 'live') == 'live':
                             f.write('{}<!-- {} -->\r\n'.format(2 * indent, xml_safe_comment(xml_escape(cat.encode('utf-8')))))
                             for x in self._dictchannels[cat]:
                                 if not x['stream-name'].startswith('placeholder_'):
@@ -1252,13 +1255,13 @@ class Provider:
         if self.config.all_bouquet:
             iptv_bouquet_list = self._create_all_channels_bouquet()
 
-        vod_categories = list(cat for cat in self._category_order if cat.startswith('VOD -'))
+        vod_categories = list(cat for cat in self._category_order if self._category_options[cat].get('type', 'live') == 'vod')
         vod_category_output = False
         vod_bouquet_entry_output = False
         channel_number_start_offset_output = False
 
         for cat in self._category_order:
-            if not cat.startswith('VOD -'):
+            if self._category_options[cat].get('type', 'live') == 'live':
                 cat_enabled = self._category_options.get(cat, {}).get('enabled', True)
             else:
                 cat_enabled = self._category_options.get('VOD', {}).get('enabled', True)
@@ -1280,7 +1283,7 @@ class Provider:
                 if cat not in vod_categories or self.config.multi_vod:
                     with open(bouquet_filepath, "w+") as f:
                         bouquet_name = '{} - {}'.format(self.config.name, cat_title.encode('utf-8')).decode("utf-8")
-                        if not cat.startswith('VOD -'):
+                        if self._category_options[cat].get('type', 'live') == 'live':
                             if cat in self._category_options and self._category_options[cat].get('nameOverride', False):
                                 bouquet_name = self._category_options[cat]['nameOverride'].decode('utf-8')
                         else:
@@ -1364,7 +1367,7 @@ class Provider:
                 f.write('<channels>\n')
                 for cat in self._category_order:
                     if cat in self._dictchannels and self._category_options.get(cat, {}).get('enabled', True):
-                        if not cat.startswith('VOD'):
+                        if self._category_options[cat].get('type', 'live') == 'live':
                             cat_title = get_category_title(cat, self._category_options)
 
                             f.write('{}<!-- {} -->\n'.format(indent, xml_safe_comment(xml_escape(cat_title.encode('utf-8')))))
