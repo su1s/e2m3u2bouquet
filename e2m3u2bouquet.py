@@ -39,7 +39,6 @@ try:
     from enigma import eDVBDB
 except ImportError:
     pass
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 __all__ = []
 __version__ = '0.8.4'
@@ -148,7 +147,6 @@ def get_service_title(channel):
     """
     return channel['nameOverride'] if channel.get('nameOverride', False) else channel['stream-name']
 
-
 def reload_bouquets():
     if not TESTRUN:
         print("\n----Reloading bouquets----")
@@ -156,6 +154,7 @@ def reload_bouquets():
             eDVBDB.getInstance().reloadBouquets()
         except:
             r = requests.get('http://127.0.0.1/web/servicelistreload?mode=2', timeout=5)
+            r.close()
         print("bouquets reloaded...")
 
 def get_safe_filename(fname):
@@ -163,7 +162,19 @@ def get_safe_filename(fname):
     """
     return re.sub('[-\s]+', '-', fname.decode('utf-8').translate({ord(c): None for c in '\/:%~}{]["^$#@*,!?&`|><+='})).strip().lower()[:255]
 
+def progressbar(count, total, bar_len=50, status=''):
+    """ Simple progressbar indicator to stdout output
+    """
+    filled_len = int(round(bar_len * count / float(total)))
+    percents = round(100.0 * count / float(total), 1)
+    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+    sys.stdout.write('\r[%s] %s%% ... %s' % (bar, percents, status))
+    sys.stdout.flush()
+
 def get_parser_args(program_license, program_version_message):
+
+    from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
     parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
     # URL Based Setup
     urlgroup = parser.add_argument_group('URL Based Setup')
@@ -207,11 +218,9 @@ def get_parser_args(program_license, program_version_message):
     parser.add_argument('-V', '--version', action='version', version=program_version_message)
     return parser
 
-
 class Status:
     is_running = False
     message = ''
-
 
 class ProviderConfig:
     def __init__(self):
@@ -236,7 +245,6 @@ class ProviderConfig:
         self.bouquet_top = False
         self.last_provider_update = 0
 
-
 class Provider:
     def __init__(self, config):
         self._panel_bouquet_file = ''
@@ -248,42 +256,44 @@ class Provider:
         self._xmltv_sources_list = None
         self.config = config
 
-    def _download_picon_file(self, logo_url, title):
-        if logo_url:
+    def _download_picon_file(self, live_service_list):
+
+        image_formats = ( "image/png", "image/jpeg", "image/jpg", "image/bmp", "image/gif", "image/x-icon", "image/x-pcx" )
+        total = len(live_service_list)
+        for service in enumerate(live_service_list, start=1):
+            count, x = service
+            logo_url, title = x['tvg-logo'], get_service_title(x) # for #extinf m3u title as a file name
+            # logo_url, title = x['tvg-logo'], ''.join(x.get('serviceRef').split('.', 1)).replace(':', '_') # for service ref as a filename
             if not logo_url.startswith('http'):
-                logo_url = 'http://{}'.format(logo_url)
+                logo_url  = 'http://{}'.format(logo_url )
 
             # Get the full picon file name with path
             picon_file = os.path.join(self.config.icon_path, self._get_picon_name(title))
-            image_formats = ( "image/png", "image/jpeg", "image/jpg", "image/bmp",
-                              "image/gif", "image/x-icon", "image/x-pcx" )
+
+            # Output some kind of progress indicator
+            if not IMPORTED:
+                # don't output when called from the plugin
+                progressbar(count, total, status='Done')
 
             if not filter(os.path.isfile, glob.glob(picon_file + '*')):
                 if DEBUG:
                     print("Picon file doesn't exist downloading")
                     print('PiconURL: {}'.format(logo_url))
-                else:
-                    # Output some kind of progress indicator
-                    if not IMPORTED:
-                        # don't output when called from the plugin
-                        sys.stdout.write('.')
-                        sys.stdout.flush()
                 try:
                     with requests.get(logo_url, headers=REQHEADERS, timeout=(5,30)) as r:
-                        if r.headers["content-type"] in image_formats:
+                        if r.headers['Content-type'] in image_formats:
                             with open(picon_file, 'wb') as f:
                                 f.write(r.content)
                         else:
-                            if DEBUG:
-                                print('Download Picon - not an image, skipping')
-                                self._picon_create_empty(picon_file)
-                            return
-                except Exception, e:
+                            raise ValueError('Download Picon format not supported, skipping') 
+
+                except (requests.exceptions.RequestException, ValueError, IOError) as e:
                     if DEBUG:
-                        print('Download picon url open error', e)
+                        print(repr.e)
                     self._picon_create_empty(picon_file)
-                    return
-                self._picon_post_processing(picon_file)
+                else:
+                    self._picon_post_processing(picon_file)
+
 
 
     def _picon_create_empty(self, picon_file):
@@ -511,7 +521,7 @@ class Provider:
                                 x['categoryOverride'] = override_channel.attrib.get('categoryOverride', '')
                                 # default to current values if attribute doesn't exist
                                 x['tvg-id'] = override_channel.attrib.get('tvg-id', x['tvg-id'])
-                                x['tvg-name'] = override_channel.attrib.get('tvg-name', x['tvg-name']) # Dorik
+                                x['tvg-name'] = override_channel.attrib.get('tvg-name', x['tvg-name'])
                                 if override_channel.attrib.get('serviceRef', None) and self.config.sref_override:
                                     x['serviceRef'] = override_channel.attrib.get('serviceRef', x['serviceRef'])
                                     x['serviceRefOverride'] = True
@@ -590,7 +600,7 @@ class Provider:
     def _create_all_channels_bouquet(self):
         """Create the Enigma2 all channels bouquet
         """
-        self._update_status('\n----Creating all channels bouquet----')
+        self._update_status('\n--- Creating all channels bouquet ---')
         print(Status.message)
 
         bouquet_indexes = []
@@ -692,7 +702,7 @@ class Provider:
                 self.config.password = password_param[0]
 
     def _update_status(self, message):
-        Status.message = '{}: {}'.format(self.config.name, message)
+        Status.message = '{}: {}'.format('\n'+self.config.name, message)
 
     def _process_provider_update(self):
         """Download provider update file from url"""
@@ -769,10 +779,10 @@ class Provider:
             # Create bouquet files
             self.create_bouquets()
             # Now create custom channels for each bouquet
-            self._update_status('\n--- Creating EPG-Importer config ---')
+            self._update_status('\n--- Creating EPGImporter & CrossEPG configs ---')
             print(Status.message)
             self.create_epg_config()
-            self._update_status('\n--- EPG-Importer config created ---')
+            self._update_status('\n--- EPGImporter & CrossEPG configs created ---')
             print(Status.message)
 
         Status.is_running = False
@@ -822,15 +832,17 @@ class Provider:
         groupRe = re.compile('.*?group-title=[\'"](.*?)[\'"]')
 
         match = re.findall(m3uRe, self._m3u_file)
-        if match:
-            self._update_status('\n--- Parsing {} channels in m3u ---'.format(len(match)))
+        total = len(match)
+        if total:
+            self._update_status('\n--- Parsing {} channels in m3u ---'.format(total))
             print(Status.message)
         else:
-            self._update_status('\n--No records found or m3u is empty--'.format(len(match)))
+            self._update_status('\n--- No records found or m3u is empty ---')
             print(Status.message)
             return
 
-        for extInfData, name, url in match:
+        for x in enumerate(match, start=1):
+            count, (extInfData, name, url) = x
             if name is None or name == "":
                 name = self.regParse(nameRe, extInfData)
                 if name == '':
@@ -839,7 +851,7 @@ class Provider:
                     continue
             service_dict = {'tvg-id': self.regParse(idRe, extInfData),
                             'tvg-logo': self.regParse(logoRe, extInfData),
-                            'group-title':self.regParse(groupRe, extInfData),
+                            'group-title': self.regParse(groupRe, extInfData),
                             'tvg-name': self.regParse(nameRe, extInfData),
                             'tvg-language': self.regParse(langRe, extInfData),
                             'tvg-country': self.regParse(langRe, extInfData),
@@ -854,16 +866,14 @@ class Provider:
                             'serviceRefOverride': False,
                             }
 
-            # Set default name for any blank groups
-            if service_dict['group-title'] == "":
-                service_dict['group-title'] = u'None'
-
             self._set_streamtypes_vodcats(service_dict)
+            #Set default name for any blank groups and update channels dict
+            self._dictchannels.setdefault(service_dict['group-title'].decode('utf-8'),[]).append(service_dict)
 
-            if service_dict['group-title'] not in self._dictchannels:
-                self._dictchannels[service_dict['group-title']] = [service_dict]
-            else:
-                self._dictchannels[service_dict['group-title']].append(service_dict)
+            # Output some kind of progress indicator
+            if not IMPORTED:
+                # don't output when called from the plugin
+                progressbar(count, total, status='Done')
 
         if not self._dictchannels:
             print("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
@@ -906,8 +916,7 @@ class Provider:
                                 m3u_stream_file = x['stream-url'][pos + 1:]
                                 if m3u_stream_file in self._panel_bouquet:
                                     # have a match use the panels custom service ref
-                                    x['serviceRef'] = "{}:{}".format(x['stream-type'],
-                                                                     self._panel_bouquet[m3u_stream_file])
+                                    x['serviceRef'] = "{}:{}".format(x['stream-type'],self._panel_bouquet[m3u_stream_file])
                                     continue
                         if not x.get('serviceRefOverride'):
                             # if service ref is not overridden in xml update
@@ -979,6 +988,7 @@ class Provider:
             self._update_status('\n-- Python PIL module not found. Download picons - disabled! --')
             print(Status.message)
             return
+
         self._update_status('\n--- Downloading Picon files, please be patient ---')
         print(Status.message)
         print('If no Picons exist this will take a few minutes')
@@ -989,12 +999,11 @@ class Provider:
                 raise
 
         for cat in self._dictchannels:
-            if not cat.startswith('VOD'):
-                # Download Picon if not VOD
-                for x in self._dictchannels[cat]:
-                    if not x['stream-name'].startswith('placeholder_'):
-                        self._download_picon_file(x['tvg-logo'], get_service_title(x))
-
+            self._update_status('\n--- Update picons for {} ---'.format(cat.encode('utf-8')))
+            print(Status.message) 
+            self._download_picon_file([x for x in self._dictchannels[cat] if not x['stream-name'].startswith('placeholder_')
+                                        and x['tvg-logo'] and not cat.startswith('VOD')])
+     
         self._update_status('\n--- Picons download completed ---')
         print(Status.message)
         print('Box will need restarted for Picons to show...')
@@ -1062,46 +1071,34 @@ class Provider:
                     # UK - International (xz)
                     f.write('{}<group id="{}">\r\n'.format(2 * indent, 'UK - International (xz)'))
                     f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://www.xmltvepg.nl/rytecUK_int.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://rytecepg.ipservers.eu/epg_data/rytecUK_int.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://rytecepg.ipservers.eu/epg_data/rytecUK_int.xz'))
                     f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecUK_int.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://91.121.106.172/~rytecepg/epg_data/rytecUK_int.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://www.vuplus-community.net/rytec/rytecUK_int.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecUK_int.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecUK_int.xz'))
                     f.write('{}</group>\r\n'.format(2 * indent))
                     # UK - Sky Live (xz)
                     f.write('{}<group id="{}">\r\n'.format(2 * indent, 'UK - Sky Live (xz)'))
                     f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://www.xmltvepg.nl/rytecUK_SkyLive.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://rytecepg.ipservers.eu/epg_data/rytecUK_SkyLive.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://rytecepg.ipservers.eu/epg_data/rytecUK_SkyLive.xz'))
                     f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecUK_SkyLive.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://91.121.106.172/~rytecepg/epg_data/rytecUK_SkyLive.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://www.vuplus-community.net/rytec/rytecUK_SkyLive.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecUK_SkyLive.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecUK_SkyLive.xz'))
                     f.write('{}</group>\r\n'.format(2 * indent))
                     # UK - Sky Dead (xz)
                     f.write('{}<group id="{}">\r\n'.format(2 * indent, 'UK - Sky Dead (xz)'))
                     f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://www.xmltvepg.nl/rytecUK_SkyDead.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://rytecepg.ipservers.eu/epg_data/rytecUK_SkyDead.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://rytecepg.ipservers.eu/epg_data/rytecUK_SkyDead.xz'))
                     f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecUK_SkyDead.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://91.121.106.172/~rytecepg/epg_data/rytecUK_SkyDead.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://www.vuplus-community.net/rytec/rytecUK_SkyDead.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecUK_SkyDead.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecUK_SkyDead.xz'))
                     f.write('{}</group>\r\n'.format(2 * indent))
                     # UK - Sports/Movies (xz)
                     f.write('{}<group id="{}">\r\n'.format(2 * indent, 'UK - Sports/Movies (xz)'))
                     f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://www.xmltvepg.nl/rytecUK_SportMovies.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://rytecepg.ipservers.eu/epg_data/rytecUK_SportMovies.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://rytecepg.ipservers.eu/epg_data/rytecUK_SportMovies.xz'))
                     f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://rytecepg.wanwizard.eu/rytecUK_SportMovies.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://91.121.106.172/~rytecepg/epg_data/rytecUK_SportMovies.xz'))
-                    f.write('{}<url>{}</url>\r\n'.format(3 * indent,
-                                                         'http://www.vuplus-community.net/rytec/rytecUK_SportMovies.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://91.121.106.172/~rytecepg/epg_data/rytecUK_SportMovies.xz'))
+                    f.write('{}<url>{}</url>\r\n'.format(3 * indent, 'http://www.vuplus-community.net/rytec/rytecUK_SportMovies.xz'))
                     f.write('{}</group>\r\n'.format(2 * indent))
                     f.write('{}-->\r\n'.format(2 * indent))
 
@@ -1195,10 +1192,8 @@ class Provider:
         channel_number_start_offset_output = False
 
         for cat in self._category_order:
-            if not cat.startswith('VOD -'):
-                cat_enabled = self._category_options.get(cat, {}).get('enabled', True)
-            else:
-                cat_enabled = self._category_options.get('VOD', {}).get('enabled', True)
+            cat_enabled = self._category_options.get(cat, {}).get('enabled', True) if not cat.startswith('VOD -') \
+                            else self._category_options.get('VOD', {}).get('enabled', True)
 
             if cat in self._dictchannels and cat_enabled:
                 cat_title = get_category_title(cat, self._category_options)
