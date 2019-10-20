@@ -69,11 +69,11 @@ Config file based setup
 ## Prerequisites
 EPG-Importer plugin is required. This should be available in the plugin feed or already installed.
 
-N.B. OpenPLi may need additional packages installed. If you attempt to run the script and get an error about
-missing modules please run
+N.B. OpenPLi may need additional packages installed. If you attempt to download the picons and you'll get
+an massege in log about missing modules, please inastall it 
 ```
 opkg update
-opkg install python-image python-imaging python-argparse
+opkg install python-image python-imaging
 ```
 
 ## How to install
