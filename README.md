@@ -51,6 +51,7 @@ optional arguments:
 URL Based Setup:
   -m M3UURL, --m3uurl M3UURL
                         URL to download m3u data from (required)
+                        or local file to download (file:///home/iptv/playlist.m3u)
   -e EPGURL, --epgurl EPGURL
                         URL source for XML TV epg data sources
 
