@@ -82,7 +82,7 @@
             }
         }
 
-        var installcmd = "wget -O /tmp/config.xml \"https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/generator_config.xml\" && sed -i 's#hhhhh#myhost#g' /tmp/config.xml && sed -i 's/uuuuu/myusername/g' /tmp/config.xml && sed -i 's/ppppp/mypassword/g' /tmp/config.xml && opkg install --force-reinstall \"https://github.com/su1s/e2m3u2bouquet/releases/download/v0.8.3/enigma2-plugin-extensions-e2m3u2bouquet_0.8.3_all.ipk\" && reboot";
+        var installcmd = "wget -O /tmp/config.xml \"https://raw.githubusercontent.com/su1s/e2m3u2bouquet/master/generator_config.xml\" && sed -i 's#hhhhh#myhost#g' /tmp/config.xml && sed -i 's/uuuuu/myusername/g' /tmp/config.xml && sed -i 's/ppppp/mypassword/g' /tmp/config.xml && opkg install --force-reinstall \"https://github.com/su1s/e2m3u2bouquet/releases/download/v0.8.4/enigma2-plugin-extensions-e2m3u2bouquet_0.8.4_all.ipk\" && reboot";
         var button = document.getElementById('generate');
         button.addEventListener('click', onClick);
     </script> 
