@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-#-*- coding: utf-8 -*-
+# -*- coding:utf-8 -*-
 
 """
 e2m3u2bouquet.e2m3u2bouquet -- Enigma2 IPTV m3u to bouquet parser
@@ -30,6 +30,10 @@ except:
 from collections import OrderedDict
 from requests_file import FileAdapter
 from urllib3.packages.six.moves.urllib.parse import parse_qs, urlparse, quote, quote_plus
+from urllib3.exceptions import InsecureRequestWarning
+# Suppress the SSL warning from urllib3
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning) 
+
 try:
     import xml.etree.cElementTree as ET
 except ImportError:
@@ -248,7 +252,6 @@ class Provider:
     def __init__(self, config):
         self._panel_bouquet_file = ''
         self._panel_bouquet = {}
-        self._m3u_file = None
         self._category_order = []
         self._category_options = {}
         self._dictchannels = OrderedDict()
@@ -271,7 +274,7 @@ class Provider:
                 if DEBUG:
                     print("Picon file doesn't exist downloading\nPiconURL: {}".format(logo_url))
                 try:
-                    with requests.get(logo_url, headers=REQHEADERS, timeout=(5,30)) as r, \
+                    with requests.get(logo_url, headers=REQHEADERS, timeout=(5,30), verify=False) as r, \
                             open(picon_file, 'wb') as f:
                         if r.headers.get('Content-type') in image_formats:
                                 f.write(r.content)
@@ -355,7 +358,7 @@ class Provider:
                      pos = service[10].rfind('/')
                      if pos != -1 and (pos + 1 != len(service[10])):
                          key = service[10][pos + 1:]
-                         value = ':'.join(service[1:9]) 
+                         value = ':'.join(service[1:9])
                          if value != '0:1:0:0:0:0:0:0:0':
                              # only add to dict if a custom service id is present
                              self._panel_bouquet[key] = value
@@ -566,8 +569,8 @@ class Provider:
         """Add service to bouquet file
         """
         if not channel['stream-name'].startswith('placeholder_'):
-            f.write('#SERVICE {}:{}:\n'.format(channel['serviceRef'], quote(channel['stream-url'])))
-            f.write(u'#DESCRIPTION {}\n'.format(get_service_title(channel)))
+            f.write('#SERVICE {}:{}:{}\n'.format(channel['serviceRef'], quote(channel['stream-url'], ''), get_service_title(channel)))
+            f.write('#DESCRIPTION {}\n'.format(get_service_title(channel)))
         else:
             f.write('{}\n'.format(PLACEHOLDER_SERVICE))
 
@@ -762,17 +765,14 @@ class Provider:
             # set bouquet_url to default url
             pos = self.config.m3u_url.find('get.php')
             if pos != -1:
-                self.config.bouquet_url = self.config.m3u_url[0:pos + 7] + '?username={}&password={}&type=dreambox&output=ts'.format(
-                    quote_plus(self.config.username), quote_plus(self.config.password))
+                self.config.bouquet_url = self.config.m3u_url[0:pos + 7] + quote_plus('?username={username}&password={password}&type=dreambox&output=ts'.format(**self.config.__dict__))
 
         # Download panel bouquet
         if self.config.bouquet_url:
             self.download_panel_bouquet()
 
-        # Download m3u
-        if self.download_m3u():
-            # parse m3u file
-            self.parse_m3u()
+        # Download & parse m3u to _dictchannels
+        self.download_m3u()
 
         if self._dictchannels:
             self.parse_data()
@@ -810,28 +810,31 @@ class Provider:
             s = requests.Session()
             s.mount('file://', FileAdapter())
             # Get playlist from URL or local m3u file ('file:///path/to/file')
-            with s.get(self.config.m3u_url, headers=REQHEADERS, timeout=(5,30), allow_redirects=True) as r:
-               self._m3u_file = r.text.encode('utf-8')
-            return True
-        except Exception:
+            with s.get(self.config.m3u_url, headers=REQHEADERS, timeout=(5,30), stream=True, allow_redirects=True, verify=False) as m3u:
+                if not m3u.encoding:
+                   m3u.encoding = 'utf-8'
+                self.parse_m3u(m3u)
+
+        except Exception, e:
+            raise e 
             self._update_status('\n--- Unable to download m3u file ---')
             print(Status.message)
-            return False
 
     def regParse(self, parser, data):
         match = parser.search(data)
         return match.group(1).strip() if match else ''
 
-    def parse_m3u(self):
+    def parse_m3u(self, m3u):
         """core parsing routine
-        Look in:  https://tools.ietf.org/html/draft-pantos-http-live-streaming-23#section-4.3.2.1
+        tags description: https://howlingpixel.com/i-en/M3U
         m3u example:
 
         #EXTINF:0 tvg-name="Important Channel" tvg-language="English" tvg-country="US" tvg-id="imp-001" tvg-logo="http://pathlogo/logo.jpg" group-title="Top10", Discovery Channel cCloudTV.ORG (Top10) (US) (English)
+        #EXTGRP:Top10  (optional tag)
         http://167.114.102.27/live/Eem9fNZQ8r_FTl9CXevikA/1461268502/a490ae75a3ec2acf16c9f592e889eb4c.m3u8|User-Agent=Mozilla%2F5.0%20(Windows%20NT%206.1%3B%20WOW64)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F47.0.2526.106%20Safari%2F537.36
         """
         # Set regexp patterns
-        m3uRe = re.compile('(.+?),(.+)\s*(.+)\s*')
+        # m3uRe = re.compile('(.+?),(.+)\s*(.+)\s*')
         idRe = re.compile('.*?tvg-id=[\'"](.*?)[\'"]')
         nameRe = re.compile('.*?tvg-name=[\'"](.*?)[\'"]')
         logoRe = re.compile('.*?tvg-logo=[\'"](.*?)[\'"]')
@@ -839,8 +842,10 @@ class Provider:
         countryRe = re.compile('.*?tvg-country=[\'"](.*?)[\'"]')
         groupRe = re.compile('.*?group-title=[\'"](.*?)[\'"]')
 
-        match = re.findall(m3uRe, self._m3u_file)
-        total = len(match)
+
+        # Remove all non standard directive from IPTV playlist and parse it                                                                                    
+        # match = re.findall(m3uRe, re.sub(r'(?m)^\#(EXTGRP|PLAYLIST):.*\n?', '', m3u)) 
+        total = len(re.findall('(?=#EXTINF:)', m3u.text))
         if total:
             self._update_status('\n--- Parsing {} channels in m3u ---'.format(total))
             print(Status.message)
@@ -849,40 +854,61 @@ class Provider:
             print(Status.message)
             return
 
-        for x in enumerate(match, start=1):
-            count, (extInfData, name, url) = x
-            if name is None or name == "":
-                name = self.regParse(nameRe, extInfData)
-                if name == '':
-                    if DEBUG:
-                        print("No TITLE info found for this service - skip")
-                    continue
-            group = self.regParse(groupRe, extInfData)
-            service_dict = {'tvg-id': self.regParse(idRe, extInfData),
-                            'tvg-logo': self.regParse(logoRe, extInfData),
-                            'tvg-name': self.regParse(nameRe, extInfData),
-                            'tvg-language': self.regParse(langRe, extInfData),
-                            'tvg-country': self.regParse(langRe, extInfData),
-                            'group-title': u'NoGroup' if group == '' else group,
-                            'stream-url': url,
-                            'stream-name': re.sub('^\s+|\s+$', '', name),
-                            'nameOverride': '',
-                            'categoryOverride': '',
-                            'serviceRef': '',
-                            'category_type': 'live',
-                            'has_archive': False,
-                            'enabled': True,
-                            'serviceRefOverride': False,
-                            }
+        service_dict = {}
+        count = 0
 
-            self._set_streamtypes_vodcats(service_dict)
-            #Set default name for any blank groups and update channels dict
-            self._dictchannels.setdefault(service_dict['group-title'].decode('utf-8'), []).append(service_dict)
+        for line in m3u.iter_lines():
 
-            # Output some kind of progress indicator
-            if not IMPORTED:
-                # don't output when called from the plugin
-                progressbar(count, total, status='Done')
+            if line.startswith('#EXTM3U:'):
+                continue
+
+            elif line.startswith('#EXTINF:'):
+                try:
+                    extInfData, name = line.split(',')
+                except:
+                    extInfData = line
+                    name = self.regParse(nameRe, extInfData)
+                    if name == '':
+                        if DEBUG:
+                            print("No TITLE info found for this service - skip")
+                        continue
+                group = self.regParse(groupRe, extInfData)
+                service_dict = {'tvg-id': self.regParse(idRe, extInfData),
+                                'tvg-logo': self.regParse(logoRe, extInfData),
+                                'tvg-name': self.regParse(nameRe, extInfData),
+                                'tvg-language': self.regParse(langRe, extInfData),
+                                'tvg-country': self.regParse(langRe, extInfData),
+                                'group-title': u'NoGroup' if group == '' else group,
+                                'stream-name': name.strip(),
+                                'nameOverride': '',
+                                'categoryOverride': '',
+                                'serviceRef': '',
+                                'category_type': 'live',
+                                'has_archive': False,
+                                'enabled': True,
+                                'serviceRefOverride': False,
+                                }
+
+                # Output some kind of progress indicator
+                if not IMPORTED:
+                    count+=1
+                    # don't output when called from the plugin
+                    progressbar(count, total, status='Done')
+
+            elif line.startswith('#EXTGRP:') and service_dict:
+                if service_dict.get('group-title') == u'NoGroup':
+                    try:
+                        service_dict['group-title'] = line.split(':')[1].strip()
+                    except:
+                        pass
+
+            elif line.startswith(('http://', 'https://', 'rtsp://', 'rtmp://')) and service_dict:
+                service_dict['stream-url'] = line
+                self._set_streamtypes_vodcats(service_dict)
+                #Set default name for any blank groups and update channels dict
+                self._dictchannels.setdefault(service_dict['group-title'].decode('utf-8'), []).append(service_dict)
+            else:
+                service_dict = {}           
 
         if not self._dictchannels:
             print("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
@@ -1011,11 +1037,11 @@ class Provider:
         for cat in self._dictchannels:
             self._update_status(u'\n--- Update picons for {} ---'.format(cat))
             print(Status.message) 
-            if self._category_options[cat].get('type', 'live') == 'live':
             # Download Picon if not VOD
-                self._download_picon_file([x for x in self._dictchannels[cat] if not x['stream-name'].startswith('placeholder_')
-                                           and x['tvg-logo'] and urlparse(x['tvg-logo']).scheme in ('http','https')
-                                           and not cat.startswith('VOD')])
+            self._download_picon_file([x for x in self._dictchannels[cat] if not x['stream-name'].startswith('placeholder_')
+                                       and x['tvg-logo'] and urlparse(x['tvg-logo']).scheme in ('http','https')
+                                       and self._category_options[cat].get('type', 'live') == 'live'
+                                       ])
 
         self._update_status('\n--- Picons download completed ---')
         print(Status.message)
@@ -1030,11 +1056,7 @@ class Provider:
             try:
                 tree = ET.ElementTree(file=mapping_file)
                 for group in tree.findall('.//xmltvextrasources/group'):
-                    group_name = group.attrib.get('id')
-                    urllist = []
-                    for url in group:
-                        urllist.append(url.text)
-                    self._xmltv_sources_list[group_name] = urllist
+                    self._xmltv_sources_list[group.attrib.get('id')] = [url.text for url in group] # Group-name list
             except Exception:
                 msg = 'Corrupt override.xml file'
                 print(msg)
@@ -1407,7 +1429,7 @@ class Config:
             tree = ET.ElementTree(file=configfile)
             for node in tree.findall('.//supplier'):
                 provider = ProviderConfig()
-
+                
                 if node is not None:
                     for child in node:
                         if child.tag == 'name':
@@ -1453,6 +1475,7 @@ class Config:
 
                 if provider.name:
                     self.providers[provider.name] = provider
+
         except Exception:
             msg = 'Corrupt config.xml file'
             print(msg)
