@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python2 
 #-*- coding:utf-8 -*-
 
 """
@@ -23,7 +23,7 @@ import errno
 import requests
 try:
     from PIL import Image
-    from io import BytesIO
+    from io import BytesIO, SEEK_END
     USE_PIL=True
 except:
     USE_PIL=False
@@ -33,7 +33,7 @@ from requests.utils import requote_uri
 from urllib3.packages.six.moves.urllib.parse import parse_qs, urlparse, quote
 from urllib3.exceptions import InsecureRequestWarning
 # Suppress the SSL warning from urllib3
-requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning) 
 
 try:
     import xml.etree.cElementTree as ET
@@ -60,6 +60,7 @@ CFGPATH = os.path.join(ENIGMAPATH, 'e2m3u2bouquet/')
 PICONSPATH = '/usr/share/enigma2/picon/'
 IMPORTED = False
 PLACEHOLDER_SERVICE = '#SERVICE 1:832:d:0:0:0:0:0:0:0:'
+NAMESPACE = '1010101'
 REQHEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'}
 
 class CLIError(Exception):
@@ -275,14 +276,16 @@ class Provider:
                 print("Picon file doesn't exist downloading\nPiconURL: {}".format(logo_url))
             try:
                 with requests.get(logo_url, headers=REQHEADERS, timeout=(5,30), verify=False) as r:
-                    if r.headers.get('Content-type') in image_formats:
-                        im = Image.open(BytesIO(r.content))
-                        width, height = im.size
-                        if width > 220 or height > 132:
-                            im.resize(220,132)
-                        if DEBUG:                                                                                                       
-                           print('Save picon: {}.{}'.foramt(title, 'png'))
-                        im.save('{}.{}'.format(pfile_name, 'png'))
+                    r.raise_for_status()
+                    if r.headers.get('Content-type') not in image_formats:
+                        raise ValueError('Not valid image format!')
+                    im = Image.open(BytesIO(r.content))                                                                                                    
+                    width, height = im.size                                                                                                                
+                    if width > 220 or height > 132:                                                                                                        
+                        im.resize(220,132)
+                    if DEBUG:
+                        print('Save picon: {}.{}'.foramt(title, 'png'))
+                    im.save('{}.{}'.format(pfile_name, 'png'))
 
             except Exception, e:
                 if DEBUG:
@@ -689,9 +692,6 @@ class Provider:
     def process_provider(self):
         Status.is_running = True
 
-        # Set epg to rytec if nothing else provided
-        if self.config.epg_url is None:
-            self.config.epg_url = "http://www.vuplus-community.net/rytec/rytecxmltv-UK.gz"
         # Set picon path
         if self.config.icon_path is None or TESTRUN == 1:
             self.config.icon_path = PICONSPATH
@@ -759,87 +759,89 @@ class Provider:
             s.mount('file://', FileAdapter())
             # Get playlist from URL or local m3u file ('file:///path/to/file')
             with s.get(self.config.m3u_url, headers=REQHEADERS, timeout=(5,30), stream=True, allow_redirects=True, verify=False) as m3u:
-                if not m3u.encoding:
-                   m3u.encoding = 'utf-8'
+                m3u.raise_for_status()
+                if m3u.encoding is None:
+                    m3u.encoding = 'utf-8'
                 self.parse_m3u(m3u)
 
         except Exception, e:
-            raise e 
+            print(repr(e))
+            if DEBUG:
+                raise e 
             self._update_status('\n--- Unable to download m3u file ---')
             print(Status.message)
-
-    def regParse(self, parser, data):
-        match = parser.search(data)
-        return match.group(1).strip() if match else ''
 
     def parse_m3u(self, m3u):
         """core parsing routine
         tags description: https://howlingpixel.com/i-en/M3U
         m3u example:
 
+        #EXTM3U url-tvg="http://tvguide.epg:8000/1234/987654321.xml" url-logo="http://www.logoserver.com/logos/" m3uautoload=1 cache=1500 deinterlace=auto 
         #EXTINF:0 tvg-name="Important Channel" tvg-language="English" tvg-country="US" tvg-id="imp-001" tvg-logo="http://pathlogo/logo.jpg" group-title="Top10", Discovery Channel cCloudTV.ORG (Top10) (US) (English)
-        #EXTGRP:Top10  (optional tag)
+        #EXTGRP:Top10  (optional derective)
         http://167.114.102.27/live/Eem9fNZQ8r_FTl9CXevikA/1461268502/a490ae75a3ec2acf16c9f592e889eb4c.m3u8|User-Agent=Mozilla%2F5.0%20(Windows%20NT%206.1%3B%20WOW64)%20AppleWebKit%2F537.36%20(KHTML%2C%20like%20Gecko)%20Chrome%2F47.0.2526.106%20Safari%2F537.36
         """
-        # Set regexp patterns
-        # m3uRe = re.compile('(.+?),(.+)\s*(.+)\s*')
-        tvgurlRe = re.compile('.*?tvg-url=[\'"](.*?)[\'"]') 
-        tvgidRe = re.compile('.*?tvg-id=[\'"](.*?)[\'"]')
-        tvgnameRe = re.compile('.*?tvg-name=[\'"](.*?)[\'"]')
-        tvglogoRe = re.compile('.*?tvg-logo=[\'"](.*?)[\'"]')
-        tvglangRe = re.compile('.*?tvg-language=[\'"](.*?)[\'"]')
-        tvgcountryRe = re.compile('.*?tvg-country=[\'"](.*?)[\'"]')
-        grouptitleRe = re.compile('.*?group-title=[\'"](.*?)[\'"]')
-
-
-        # Remove all non standard directive from IPTV playlist and parse it                                                                                    
-        # match = re.findall(m3uRe, re.sub(r'(?m)^\#(EXTGRP|PLAYLIST):.*\n?', '', m3u)) 
         total = len(re.findall('(?=#EXTINF:)', m3u.text))
         if total:
-            self._update_status('\n--- Parsing {} channels in m3u ---'.format(total))
+            self._update_status('\n--- Parsing {} channels in M3U ---'.format(total))
             print(Status.message)
         else:
-            self._update_status('\n--- No records found or m3u is empty ---')
+            self._update_status('\n--- No records found or M3U is empty ---')
+            print(Status.message)
+            return
+        if not '#EXTM3U' in m3u.text:
+            self._update_status('\n--- Not M3U file or M3U is empty ---')
             print(Status.message)
             return
 
-        service_dict = {}
+        pattern = re.compile(r'.*?(url-tvg|url-epg|url-logo|tvg-id|tvg-name|tvg-logo|tvg-language|tvg-country|group-title)=[\'"](.*?)[\'"]')
+
+        def service_dict_template():
+            dict = {}.fromkeys(['url-tvg', 'url-epg', 'url-logo', 'tvg-id', 'tvg-name', 'tvg-logo', 'tvg-language', 'tvg-country',
+                                'nameOverride', 'categoryOverride', 'serviceRef',
+                               ], '')
+            dict.update({'group-title': u'NoGroup', 'category_type': 'live', 'has_archive': False,
+                         'enabled': True, 'serviceRefOverride': False,
+                        })
+            return dict
+
+        service_dict = service_dict_template()
         count = 0
 
-        for line in m3u.iter_lines():
-
-            if line.startswith('#EXTM3U:'):
-                tvgurl = self.regParse(tvgurlRe, extInfData)
-                if tvgurl != '' and tvgurl.startswith(('http://', 'https://')) and not self.config.epg_url:
-                    self.config.epg_url = tvgurl
+        for line in m3u.iter_lines(decode_unicode=True):
+          if line:
+            if line.startswith('#EXTM3U'):
+                service_dict.update({k:v.strip('"') for k,v in [x.split('=') for x in line.split() if '=' in x]})
+                urllogo = service_dict.get('url-logo')
+                urlepg = service_dict.get('url-tvg')
+                if not urlepg:
+                   urlepg = service_dict.get('url-epg')
+                if urlepg and urlepg.startswith(('http://', 'https://')) and not self.config.epg_url:
+                    self.config.epg_url = urlepg
+                else:
+                    #Set default epg
+                    self.config.epg_url = 'https://iptvx.one/epg/epg.xml.gz'
                 continue
 
             elif line.startswith('#EXTINF:'):
                 try:
                     extInfData, name = line.split(',')
                 except:
-                    extInfData = line
-                    name = self.regParse(tvgnameRe, extInfData)
-                    if name == '':
-                        if DEBUG:
-                            print("No TITLE info found for this service - skip")
-                        continue
-                group = self.regParse(grouptitleRe, extInfData)
-                service_dict = {'tvg-id': self.regParse(tvgidRe, extInfData),
-                                'tvg-logo': self.regParse(tvglogoRe, extInfData),
-                                'tvg-name': self.regParse(tvgnameRe, extInfData),
-                                'tvg-language': self.regParse(tvglangRe, extInfData),
-                                'tvg-country': self.regParse(tvgcountryRe, extInfData),
-                                'group-title': u'NoGroup' if group == '' else group,
-                                'stream-name': name.strip(),
-                                'nameOverride': '',
-                                'categoryOverride': '',
-                                'serviceRef': '',
-                                'category_type': 'live',
-                                'has_archive': False,
-                                'enabled': True,
-                                'serviceRefOverride': False,
-                                }
+                    extInfData, name = line, ''
+
+                service_dict.update(dict(pattern.findall(extInfData)))
+                if name == '':
+                   name = service_dict.get('tvg-name')
+                   if name == '':
+                       if DEBUG:
+                           print("No TITLE info found for this service - skip")
+                       continue
+ 
+                service_dict.update({'stream-name': name.strip()})
+                tvglogo = service_dict.get('tvg-logo')
+                if tvglogo !='' and not tvglogo.startswith(('http://', 'https://')) \
+                                and urllogo and urllogo.startswith(('http://', 'https://')):
+                    service_dict['tvg-logo'] = logourl+tvglogo  
 
                 # Output some kind of progress indicator
                 if not (IMPORTED and DEBUG):
@@ -847,20 +849,19 @@ class Provider:
                     # don't output when called from the plugin
                     progressbar(count, total, status='Done')
 
-            elif line.startswith('#EXTGRP:') and service_dict:
+            elif line.startswith('#EXTGRP:') and service_dict.get('stream-name', '') != '':
                 if service_dict.get('group-title') == u'NoGroup':
                     try:
                         service_dict['group-title'] = line.split(':')[1].strip()
                     except:
                         pass
 
-            elif line.startswith(('http://', 'https://', 'rtsp://', 'rtmp://')) and service_dict:
+            elif line.startswith(('http://', 'https://', 'rtsp://', 'rtmp://')) and service_dict.get('stream-name', '') != '':
                 service_dict['stream-url'] = line
                 self._set_streamtypes_vodcats(service_dict)
                 #Set default name for any blank groups and update channels dict
                 self._dictchannels.setdefault(service_dict['group-title'].decode('utf-8'), []).append(service_dict)
-            else:
-                service_dict = {}           
+                service_dict = service_dict_template()
 
         if not self._dictchannels:
             print("No extended playlist info found. Check m3u url should be 'type=m3u_plus'")
@@ -896,8 +897,7 @@ class Provider:
                 for x in self._dictchannels[cat]:
                     cat_id = self._get_category_id(cat)
 #                                  #"SID:TID:ONID:Namespace"
-#                    service_ref = "{:05x}:{:.4}:{:.4}:{:0<6}".format(num, cat_id[:4], cat_id[4:], abs(hash('e2m3u2bouquet')))
-                    service_ref = "{:x}:{}:{}:{}".format(num, cat_id[:4], cat_id[4:], abs(hash('e2m3u2bouquet'))) 
+                    service_ref = '{:04x}:{}:{}:{}'.format(num, cat_id[:4], cat_id[4:], NAMESPACE)
 
                     if not x['stream-name'].startswith('placeholder_'):
                         if self._panel_bouquet and not x.get('serviceRefOverride'):
