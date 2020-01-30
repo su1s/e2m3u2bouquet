@@ -41,7 +41,7 @@ from xml.sax.saxutils import escape
 __all__ = []
 __version__ = '0.8.5'
 __date__ = '2017-06-04'
-__updated__ = '2020-01-26'
+__updated__ = '2020-01-28'
 
 DEBUG = 0
 TESTRUN = 0
@@ -233,6 +233,7 @@ class Status:
 class ProviderConfig:
     def __init__(self):
         self.name = ''
+        self.num = 0
         self.enabled = False
         self.settings_level = ''
         self.m3u_url = ''
@@ -240,6 +241,7 @@ class ProviderConfig:
         self.username = ''
         self.password = ''
         self.provider_update_url = ''
+        self.provider_hide_urls = False
         self.iptv_types = False
         self.streamtype_tv = ''
         self.streamtype_vod = ''
@@ -255,7 +257,7 @@ class ProviderConfig:
 
 
 class Provider:
-    def __init__(self, config, num=0):
+    def __init__(self, config):
         self._panel_bouquet_file = ''
         self._panel_bouquet = {}
         self._m3u_file = None
@@ -263,7 +265,6 @@ class Provider:
         self._category_options = {}
         self._dictchannels = OrderedDict()
         self._xmltv_sources_list = None
-        self._num = num
         self.config = config
 
     def _download_picon_file(self, channel):
@@ -782,7 +783,7 @@ class Provider:
         return updated
 
     def _get_safe_provider_filename(self):
-        return get_safe_filename(self.config.name, 'provider{}'.format(self._num))
+        return get_safe_filename(self.config.name, 'provider{}'.format(self.config.num))
 
     def process_provider(self):
         Status.is_running = True
@@ -1465,6 +1466,7 @@ class Config:
 
         try:
             tree = ET.ElementTree(file=configfile)
+            provider_num = 0
             for node in tree.findall('.//supplier'):
                 provider = ProviderConfig()
 
@@ -1486,6 +1488,8 @@ class Config:
                             provider.password = '' if child.text is None else child.text.strip()
                         if child.tag == 'providerupdate':
                             provider.provider_update_url = '' if child.text is None else child.text.strip()
+                        if child.tag == 'providerhideurls':
+                            provider.provider_hide_urls = True if child.text == '1' else False
                         if child.tag == 'iptvtypes':
                             provider.iptv_types = True if child.text == '1' else False
                         if child.tag == 'streamtypetv':
@@ -1510,9 +1514,11 @@ class Config:
                             provider.bouquet_top = True if child.text == '1' else False
                         if child.tag == 'lastproviderupdate':
                             provider.last_provider_update = 0 if child.text is None else child.text.strip()
+                        provider.num = provider_num
 
                 if provider.name:
                     self.providers[provider.name] = provider
+                    provider_num += 1
         except Exception, e:
             msg = 'Corrupt config.xml file'
             print(msg)
@@ -1550,6 +1556,7 @@ class Config:
                     f.write('{}<username><![CDATA[{}]]></username><!-- (Optional) will replace USERNAME placeholder in urls -->\r\n'.format(2 * indent, provider.username))
                     f.write('{}<password><![CDATA[{}]]></password><!-- (Optional) will replace PASSWORD placeholder in urls -->\r\n'.format(2 * indent, provider.password))
                     f.write('{}<providerupdate><![CDATA[{}]]></providerupdate><!-- (Optional) Provider update url -->\r\n'.format(2 * indent, provider.provider_update_url))
+                    f.write('{}<providerhideurls>{}</providerhideurls><!-- (Optional) Hide Provider urls in plugin -->\r\n'.format(2 * indent, '1' if provider.provider_hide_urls else '0'))
                     f.write('{}<iptvtypes>{}</iptvtypes><!-- Change all TV streams to IPTV type (0 or 1) -->\r\n'.format(2 * indent, '1' if provider.iptv_types else '0'))
                     f.write('{}<streamtypetv>{}</streamtypetv><!-- (Optional) Custom TV stream type (e.g. 1, 4097, 5001 or 5002 -->\r\n'.format(2 * indent, provider.streamtype_tv))
                     f.write('{}<streamtypevod>{}</streamtypevod><!-- (Optional) Custom VOD stream type (e.g. 4097, 5001 or 5002 -->\r\n'.format(2 * indent, provider.streamtype_vod))
@@ -1650,7 +1657,6 @@ USAGE
                 e2m3u2b_config.read_config(os.path.join(CFGPATH, 'config.xml'))
                 providers_updated = False
 
-                provider_num = 0
                 for key, provider_config in e2m3u2b_config.providers.iteritems():
                     if provider_config.enabled:
                         if provider_config.name.startswith('Supplier Name'):
@@ -1660,7 +1666,7 @@ USAGE
                             print('\n********************************')
                             print('Config based setup - {}'.format(provider_config.name.encode('utf-8')))
                             print('********************************\n')
-                            provider = Provider(provider_config, provider_num)
+                            provider = Provider(provider_config)
 
                             if int(time.time()) - int(provider.config.last_provider_update) > 21600:
                                 # wait at least 6 hours (21600s) between update checks
@@ -1668,7 +1674,6 @@ USAGE
                             provider.process_provider()
                     else:
                         print('\nProvider: {} is disabled - skipping.........\n'.format(provider_config.name))
-                    provider_num += 1
 
                 if providers_updated:
                     e2m3u2b_config.write_config()
