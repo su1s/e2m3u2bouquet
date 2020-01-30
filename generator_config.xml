@@ -16,6 +16,7 @@
         <username><![CDATA[uuuuu]]></username><!-- (Optional) will replace USERNAME placeholder in urls -->
         <password><![CDATA[ppppp]]></password><!-- (Optional) will replace PASSWORD placeholder in urls -->
         <providerupdate><![CDATA[]]></providerupdate><!-- (Optional) Provider update url -->
+		<providerhideurls>0</providerhideurls><!-- (Optional) Hide Provider urls in plugin -->
         <iptvtypes>0</iptvtypes><!-- Change all TV streams to IPTV type (0 or 1) -->
         <streamtypetv></streamtypetv><!-- (Optional) Custom TV stream type (e.g. 1, 4097, 5001 or 5002 -->
         <streamtypevod></streamtypevod><!-- (Optional) Custom VOD stream type (e.g. 4097, 5001 or 5002 -->
